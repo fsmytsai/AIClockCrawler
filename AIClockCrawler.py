@@ -26,7 +26,7 @@ class AIClockCrawler:
         os.makedirs(self.log_absolute_path + '%s' %
                     (datetime.now().strftime('%Y-%m-%d')), exist_ok=True)
         self.logFile = open(self.log_absolute_path + '%s.txt' %
-                            (datetime.now().strftime('%Y-%m-%d/%H-%M-%S')), 'w')
+                            (datetime.now().strftime('%Y-%m-%d/%H-%M-%S')), 'w', encoding='utf-8')
 
         tStart = time.time()
 
