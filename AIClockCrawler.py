@@ -9,23 +9,27 @@ from xml.etree import ElementTree
 from datetime import datetime
 
 
-class NewsClockCrawler:
-    absolute_path = './'
+class AIClockCrawler:
+    log_absolute_path = './logs/'
+    sound_absolute_path = './sounds/'
     google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
-    result = []
+    result = {'is_success': False, 'news_ids': []}
 
-    def __init__(self, hour, minute, speaker):
+    def __init__(self, hour, minute, speaker, category):
         self.hour = hour
         self.minute = minute
         self.speaker = speaker
-        self.logFile = open(self.absolute_path + 'logs/%s.txt' %
-                            (datetime.now().strftime('%Y-%m-%d %H-%M-%S')), 'w')
+        self.category = category
+        os.makedirs(self.log_absolute_path + '%s' %
+                    (datetime.now().strftime('%Y-%m-%d')), exist_ok=True)
+        self.logFile = open(self.log_absolute_path + '%s.txt' %
+                            (datetime.now().strftime('%Y-%m-%d/%H-%M-%S')), 'w')
 
         tStart = time.time()
 
         self.db = pymysql.connect(
-            '127.0.0.1', 'tsaihau', 'hausung1998', 'news_clock', charset='utf8mb4')
+            '127.0.0.1', 'tsaihau', 'hausung1998', 'ai_clock', charset='utf8mb4')
         self.cursor = self.db.cursor()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -34,6 +38,8 @@ class NewsClockCrawler:
 
         tEnd = time.time()
         self.logFile.write('It cost %f sec' % (tEnd - tStart))
+        if len(self.result['news_ids']) == 11:
+            self.result['is_success'] = True
         print(self.result)
         self.logFile.close()
 
@@ -50,10 +56,25 @@ class NewsClockCrawler:
                 await self.getGoogleNews(session)
 
     async def getTimeSpeech(self, session):
-        title = '嗨，現在時間' + str(self.hour) + '點' + str(self.minute) + '分，早上好'
+        title = '嗨，現在時間' + str(self.hour) + '點'
+        if self.minute == 0:
+            title += '整'
+        else:
+            title += str(self.minute) + '分'
+
+        if self.hour in range(4, 12):
+            title += '，早上好'
+        elif self.hour in range(12, 14):
+            title += '，午安'
+        elif self.hour in range(14, 18):
+            title += '，下午好'
+        elif self.hour in range(18, 24):
+            title += '，晚上好'
+
         news_id = await self.checkDBNews(session, title, '時間', True)
         if news_id != 0:
             return
+
         news_id = self.insertNews(title, '時間', 1)
         if news_id != 0:
             self.result.append(news_id)
@@ -62,7 +83,7 @@ class NewsClockCrawler:
             await self.downloadSpeech(session, news_id, 0, title)
 
     async def getGoogleNews(self, session):
-        async with session.get('https://newsapi.org/v2/top-headlines?country=tw&apiKey=' + self.google_news_api_key) as response:
+        async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (self.category, self.google_news_api_key)) as response:
             news_data = await response.json()
 
             if news_data['status'] != 'ok':
@@ -74,7 +95,7 @@ class NewsClockCrawler:
 
             article_count = 0
             for article in news_data['articles']:
-                if article['description'] == None:
+                if article['description'] == None or article['author'] == '蘋果日報':
                     continue
 
                 if article_count == 10:
@@ -118,7 +139,7 @@ class NewsClockCrawler:
                     article['title'], article['description'], len(contents))
 
                 if news_id != 0:
-                    self.result.append(news_id)
+                    self.result['news_ids'].append(news_id)
 
                     if self.insertSounds(news_id, contents) == False:
                         continue
@@ -140,19 +161,19 @@ class NewsClockCrawler:
             self.cursor.execute(
                 'select * from sounds where news_id = %d;' % (db_news[0]))
             db_sounds = self.cursor.fetchall()
-            if len(db_sounds) == db_news[4]:
+            if len(db_sounds) == db_news[5]:
                 self.logFile.write('已存在 news_id = %d\n' % (db_news[0]))
 
                 for sound in db_sounds:
-                    if sound[3] == 0:
+                    if(os.path.exists('%s%d-%d.wav' % (self.sound_absolute_path, sound[0], sound[1])) == False):
                         self.logFile.write('補音檔 news_id = %d part_no = %d\n' %
                                            (sound[0], sound[1]))
                         await self.downloadSpeech(session, sound[0], sound[1], sound[2])
 
                 if isTime:
-                    self.result.append(db_news[0])
+                    self.result['news_ids'].append(db_news[0])
                 else:
-                    self.result.append(db_news[0])
+                    self.result['news_ids'].append(db_news[0])
 
                 return db_news[0]
             else:
@@ -160,14 +181,14 @@ class NewsClockCrawler:
                     '音檔資料曾新增不完整 news_id = %d 將其刪除\n' % (db_news[0]))
                 sql = 'delete from news where news_id = %d;' % (db_news[0])
                 self.runSQL(sql)
-                os.system('rm ' + self.absolute_path +
-                          'sounds/%d-*' % (db_news[0]))
+                os.system('rm ' + self.sound_absolute_path +
+                          '%d-*' % (db_news[0]))
                 return 0
 
     def insertNews(self, title, description, part_count):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = 'insert into news values(0, \"%s\", \"%s\", \"%s\", %d, \"%s\");' % (
-            self.speaker, title, description, part_count, created_at)
+        sql = 'insert into news values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\");' % (
+            self.speaker, self.category, title, description, part_count, created_at)
         is_success = self.runSQL(sql)
         if is_success:
             self.cursor.execute('SELECT LAST_INSERT_ID();')
@@ -180,7 +201,7 @@ class NewsClockCrawler:
     def insertSounds(self, news_id, contents):
         sql = 'insert into sounds values'
         for i in range(0, len(contents)):
-            sql += '(%d, %d, \"%s\", 0)' % (
+            sql += '(%d, %d, \"%s\")' % (
                 news_id, i, contents[i])
 
             if i != len(contents) - 1:
@@ -208,14 +229,11 @@ class NewsClockCrawler:
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.speaker + ')')
         voice.text = content
 
-        uri = self.absolute_path + 'sounds/'
-
-        # 建立資料夾
-        os.makedirs(uri, exist_ok=True)
+        os.makedirs(self.sound_absolute_path, exist_ok=True)
 
         async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
             sound = await response.read()
-            with open('%s%d-%d.wav' % (uri, news_id, part_no), 'wb') as f:
+            with open('%s%d-%d.wav' % (self.sound_absolute_path, news_id, part_no), 'wb') as f:
                 if response.status != 200:
                     self.logFile.write('error news_id = %d part_no = %d status = %d\n' %
                                        (news_id, part_no, response.status))
@@ -223,15 +241,7 @@ class NewsClockCrawler:
                     await self.downloadSpeech(session, news_id, part_no, content)
                 else:
                     f.write(sound)
-                    self.successDownloadSound(news_id, part_no)
-
-    def successDownloadSound(self, news_id, part_no):
-        sql = "update sounds set is_success_dl = 1 where news_id = %d and part_no = %d;" % (
-            news_id, part_no)
-        is_success = self.runSQL(sql)
-        if is_success == False:
-            self.logFile.write('update is_success_dl failed news_id = %d part_no = %d\n' %
-                               (news_id, part_no))
+                    self.logFile.write('新音檔 %d-%d\n' % (news_id, part_no))
 
     def runSQL(self, sql):
         try:
@@ -248,19 +258,23 @@ class NewsClockCrawler:
 arg1 = 0~23 小時
 arg2 = 0~59 分鐘
 arg3 = speaker 0=Yating, Apollo 1=HanHanRUS 2=Zhiwei, Apollo
+arg4 = category 0=general 1=business 2=entertainment 3=health 4=science 5=sports 6=technology
 """
-if len(sys.argv) > 3:
+if len(sys.argv) > 4:
     try:
         hour = int(sys.argv[1])
         minute = int(sys.argv[2])
         spk = int(sys.argv[3])
+        ctg = int(sys.argv[4])
     except:
         print('輸入錯誤')
 
     speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
+    category = ['general', 'business', 'entertainment',
+                'health', 'science', 'sports', 'technology']
 
-    if 0 < hour < 24 and 0 < minute < 59:
-        NewsClockCrawler(hour, minute, speaker[spk])
+    if 0 <= hour < 24 and 0 <= minute < 59 and 0 <= spk < 3 and 0 <= ctg < 7:
+        AIClockCrawler(hour, minute, speaker[spk], category[ctg])
     else:
         print('輸入錯誤')
 else:
