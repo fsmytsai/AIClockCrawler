@@ -5,7 +5,6 @@ import time
 import os
 import sys
 import json
-from bs4 import BeautifulSoup
 from xml.etree import ElementTree
 from datetime import datetime
 
