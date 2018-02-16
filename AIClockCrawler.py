@@ -16,6 +16,7 @@ class AIClockCrawler:
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
+    article_count = 0
     result = {'is_success': False, 'data': []}
 
     def __init__(self, hour, minute, speaker, category):
@@ -46,7 +47,7 @@ class AIClockCrawler:
         request_data_len = 1
 
         if self.category != '-1':
-            request_data_len += 10
+            request_data_len += self.article_count
 
         if len(self.result['data']) == request_data_len:
             self.result['is_success'] = True
@@ -104,10 +105,9 @@ class AIClockCrawler:
             tasks = []
             datas = []
 
-            article_count = 0
             for article in news_data['articles']:
                 # 10篇新聞結束。
-                if article_count == 10:
+                if self.article_count == 10:
                     break
 
                 # 沒簡介及蘋果日報(簡介跟標題一樣)跳過。
@@ -135,7 +135,7 @@ class AIClockCrawler:
                 # 用標題檢查新聞是否已爬過。
                 text_id = await self.checkDBText(session, article['title'])
                 if text_id != 0:
-                    article_count += 1
+                    self.article_count += 1
                     continue
 
                 # content = '第' + str(self.index) + '則新聞，標題，' + article['title'] + \
@@ -144,7 +144,7 @@ class AIClockCrawler:
                 content = '標題，' + article['title'] + \
                     '。' + '簡介，' + article['description']
 
-                article_count += 1
+                self.article_count += 1
 
                 contents = []
                 part_content = content
