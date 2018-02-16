@@ -23,8 +23,10 @@ class AIClockCrawler:
         self.minute = minute
         self.speaker = speaker
         self.category = category
+        oldmask = os.umask(000)
         os.makedirs(self.log_absolute_path + '%s' %
                     (datetime.now().strftime('%Y-%m-%d')), 0o755, True)
+        os.umask(oldmask)
         self.logFile = open(self.log_absolute_path + '%s.txt' %
                             (datetime.now().strftime('%Y-%m-%d/%H-%M-%S')), 'w', encoding='utf-8')
 
