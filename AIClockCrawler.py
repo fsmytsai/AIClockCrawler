@@ -49,6 +49,9 @@ class AIClockCrawler:
 
         request_data_len = 1
 
+        if self.latitude != 1000:
+            request_data_len +=1
+
         if self.category != '-1':
             request_data_len += self.article_count
 
