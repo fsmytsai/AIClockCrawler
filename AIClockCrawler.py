@@ -107,7 +107,7 @@ class AIClockCrawler:
 
             for article in news_data['articles']:
                 # 10篇新聞結束。
-                if self.article_count == 10:
+                if self.article_count == 5:
                     break
 
                 # 沒簡介及蘋果日報(簡介跟標題一樣)跳過。
