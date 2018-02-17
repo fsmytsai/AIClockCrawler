@@ -10,20 +10,23 @@ from datetime import datetime
 
 
 class AIClockCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     article_count = 0
     result = {'is_success': False, 'data': []}
 
-    def __init__(self, hour, minute, speaker, category):
+    def __init__(self, hour, minute, speaker, category, latitude, longitude):
         self.hour = hour
         self.minute = minute
         self.speaker = speaker
         self.category = category
+        self.latitude = latitude
+        self.longitude = longitude
+
         oldmask = os.umask(000)
         os.makedirs(self.log_absolute_path + '%s' %
                     (datetime.now().strftime('%Y-%m-%d')), 0o777, True)
@@ -64,6 +67,8 @@ class AIClockCrawler:
                     return
                 self.access_token = await response.text()
                 await self.getTimeSpeech(session)
+                if self.latitude != 1000:
+                    await self.getYahooWeather(session)
                 if self.category != '-1':
                     await self.getGoogleNews(session)
 
@@ -93,6 +98,36 @@ class AIClockCrawler:
             if self.insertSounds(text_id, [title]) == False:
                 return
             await self.downloadSpeech(session, text_id, 0, title)
+
+    async def getYahooWeather(self, session):
+        async with session.get('https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20u=%22c%22%20and%20%20woeid%20in%20(SELECT%20woeid%20FROM%20geo.places%20WHERE%20text=%22(' + str(self.latitude) + ',' + str(self.longitude) + ')%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys') as response:
+            weather_data = await response.json()
+            if weather_data['query']['count'] == 0:
+                self.logFile.write('請求 yahoo 天氣失敗\n')
+                return
+
+            title = ""
+            if int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [32, 33, 34]:
+                title += "今天天氣晴朗"
+            elif int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [2, 3, 4, 9, 37, 38, 39, 40, 45, 47]:
+                title += "今天會下雨，出門記得帶把傘"
+            elif int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [26, 27, 28, 29, 30]:
+                title += "今天是陰天"
+
+            if int(weather_data['query']['results']['channel']['item']['forecast'][0]['low']) < 15:
+                title += "，最低溫度低於十五度，請注意保暖"
+
+            text_id = await self.checkDBText(session, title)
+            if text_id != 0:
+                return
+
+            text_id = self.insertText(title, 'weather', 1)
+            if text_id != 0:
+                self.result['data'].append(
+                    {'text_id': text_id, 'part_count': 1})
+                if self.insertSounds(text_id, [title]) == False:
+                    return
+                await self.downloadSpeech(session, text_id, 0, title)
 
     async def getGoogleNews(self, session):
         async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (self.category, self.google_news_api_key)) as response:
@@ -284,13 +319,17 @@ arg1 = hour 0~23 小時
 arg2 = minute 0~59 分鐘
 arg3 = speaker 0=Yating, Apollo 1=HanHanRUS 2=Zhiwei, Apollo
 arg4 = category -1=no news 0=general 1=business 2=entertainment 3=health 4=science 5=sports 6=technology
+arg5 = latitude 緯度 -90~90 1000=無需天氣
+arg6 = longitude 經度 -180~180
 """
-if len(sys.argv) > 4:
+if len(sys.argv) > 6:
     try:
         hour = int(sys.argv[1])
         minute = int(sys.argv[2])
         spk = int(sys.argv[3])
         ctg = int(sys.argv[4])
+        latitude = float(sys.argv[5])
+        longitude = float(sys.argv[6])
     except:
         print('輸入錯誤')
 
@@ -299,7 +338,8 @@ if len(sys.argv) > 4:
                 'health', 'science', 'sports', 'technology', '-1']
 
     if 0 <= hour < 24 and 0 <= minute < 59 and 0 <= spk < 3 and -1 <= ctg < 7:
-        AIClockCrawler(hour, minute, speaker[spk], category[ctg])
+        AIClockCrawler(
+            hour, minute, speaker[spk], category[ctg], latitude, longitude)
     else:
         print('輸入錯誤')
 else:
