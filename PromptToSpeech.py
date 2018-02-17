@@ -11,7 +11,7 @@ from datetime import datetime
 class PromptToSpeech:
     # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/pts_logs/'
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     result = {'is_success': False, 'data': {}}
