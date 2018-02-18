@@ -149,7 +149,7 @@ class AIClockCrawler:
                     break
 
                 # 沒簡介及蘋果日報(簡介跟標題一樣)跳過。
-                if article['description'] == None or article['author'] == '蘋果日報':
+                if article['description'] == None or article['description'] == '' or article['author'] == '蘋果日報':
                     continue
 
                 # 簡介結尾是 '…' 或不是 '。' 則找到最後一個 '。' 當簡介結尾，如果沒找到 '。' 則跳過。
