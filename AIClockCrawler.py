@@ -15,6 +15,7 @@ class AIClockCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
+    google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     article_count = 0
     result = {'is_success': False, 'data': []}
@@ -50,13 +51,14 @@ class AIClockCrawler:
         request_data_len = 1
 
         if self.latitude != 1000:
-            request_data_len +=1
+            request_data_len += 1
 
         if self.category != '-1':
             request_data_len += self.article_count
 
         if len(self.result['data']) == request_data_len:
             self.result['is_success'] = True
+
         print(json.dumps(self.result))
         self.logFile.close()
 
@@ -103,34 +105,57 @@ class AIClockCrawler:
             await self.downloadSpeech(session, text_id, 0, title)
 
     async def getYahooWeather(self, session):
-        async with session.get('https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20u=%22c%22%20and%20%20woeid%20in%20(SELECT%20woeid%20FROM%20geo.places%20WHERE%20text=%22(' + str(self.latitude) + ',' + str(self.longitude) + ')%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys') as response:
-            weather_data = await response.json()
+        async with session.get('https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20u=%22c%22%20and%20%20woeid%20in%20(SELECT%20woeid%20FROM%20geo.places%20WHERE%20text=%22(' + str(self.latitude) + ',' + str(self.longitude) + ')%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys') as yResponse:
+            weather_data = await yResponse.json()
             if weather_data['query']['count'] == 0:
                 self.logFile.write('請求 yahoo 天氣失敗\n')
                 return
 
-            title = ""
-            if int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [32, 33, 34]:
-                title += "今天天氣晴朗"
-            elif int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [2, 3, 4, 9, 37, 38, 39, 40, 45, 47]:
-                title += "今天會下雨，出門記得帶把傘"
-            elif int(weather_data['query']['results']['channel']['item']['forecast'][0]['code']) in [26, 27, 28, 29, 30]:
-                title += "今天是陰天"
+            englishCity = weather_data['query']['results']['channel']['location']['city']
 
-            if int(weather_data['query']['results']['channel']['item']['forecast'][0]['low']) < 15:
-                title += "，最低溫度低於十五度，請注意保暖"
+            async with session.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%f,%f&keyword=%s&rankby=distance&language=zh-TW&key=%s' % (self.latitude, self.longitude, englishCity, self.google_place_api_key)) as gResponse:
+                place_data = await gResponse.json()
+                if len(place_data['results']) > 0:
+                    chineseCity = place_data['results'][0]['name']
+                else:
+                    chineseCity = ''
+                title = ''
+                code = int(weather_data['query']['results']
+                           ['channel']['item']['forecast'][0]['code'])
 
-            text_id = await self.checkDBText(session, title)
-            if text_id != 0:
-                return
+                if code in [32, 33, 34]:
+                    title += '今天%s天氣晴朗' % (chineseCity)
+                elif code in [36]:
+                    title += '今天%s天氣很熱' % (chineseCity)
+                elif code in [2, 23]:
+                    title += '今天%s風很大，出門在外請小心' % (chineseCity)
+                elif code in [3, 4, 9, 10, 11, 12, 37, 38, 39, 40, 45, 47]:
+                    title += '今天%s會下雨，出門記得帶把傘' % (chineseCity)
+                elif code in [5, 6, 7, 41, 42, 43, 46]:
+                    title += '今天%s會下雪，出門記得帶把傘' % (chineseCity)
+                elif code in [8, 35]:
+                    title += '今天%s會下冰雹，出門記得帶把傘' % (chineseCity)
+                elif code in [25]:
+                    title += '今天%s天氣很冷' % (chineseCity)
+                elif code in [26, 44]:
+                    title += '今天%s是陰天'
+                elif code in [27, 28, 29, 30]:
+                    title += '今天%s天氣晴朗，而且有雲' % (chineseCity)
 
-            text_id = self.insertText(title, 'weather', 1)
-            if text_id != 0:
-                self.result['data'].append(
-                    {'text_id': text_id, 'part_count': 1})
-                if self.insertSounds(text_id, [title]) == False:
+                if int(weather_data['query']['results']['channel']['item']['forecast'][0]['low']) < 15:
+                    title += '，最低溫度低於十五度，請注意保暖'
+
+                text_id = await self.checkDBText(session, title)
+                if text_id != 0:
                     return
-                await self.downloadSpeech(session, text_id, 0, title)
+
+                text_id = self.insertText(title, 'weather', 1)
+                if text_id != 0:
+                    self.result['data'].append(
+                        {'text_id': text_id, 'part_count': 1})
+                    if self.insertSounds(text_id, [title]) == False:
+                        return
+                    await self.downloadSpeech(session, text_id, 0, title)
 
     async def getGoogleNews(self, session):
         async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (self.category, self.google_news_api_key)) as response:
