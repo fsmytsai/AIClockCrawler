@@ -229,7 +229,7 @@ class AIClockCrawler:
                 contents.append(part_content)
 
                 preview_image = ''
-                if article['urlToImage'] != None:
+                if article['urlToImage'] != None and 'http' in article['urlToImage']:
                     preview_image = article['urlToImage']
 
                 text_id = self.insertText(
