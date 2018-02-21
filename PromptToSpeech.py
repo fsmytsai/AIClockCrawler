@@ -73,7 +73,7 @@ class PromptToSpeech:
         if text_id != 0:
             return
 
-        text_id = self.insertText(title, 'prompt', 1)
+        text_id = self.insertText(title, 'prompt', 1, '', '')
         if text_id != 0:
             self.result['data'] = {'text_id': text_id, 'part_count': 1}
             if self.insertSounds(text_id, [title]) == False:
@@ -117,10 +117,10 @@ class PromptToSpeech:
                           '%d-*' % (db_text[0]))
                 return 0
 
-    def insertText(self, title, description, part_count):
+    def insertText(self, title, description, part_count, url, preview_image):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\");' % (
-            self.speaker, 'prompt', title, description, part_count, created_at)
+        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\", \"%s\", \"%s\");' % (
+            self.speaker, 'prompt', title, description, part_count, url, preview_image, created_at)
         is_success = self.runSQL(sql)
         if is_success:
             self.cursor.execute('SELECT LAST_INSERT_ID();')

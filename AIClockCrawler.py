@@ -97,7 +97,7 @@ class AIClockCrawler:
         if text_id != 0:
             return
 
-        text_id = self.insertText(title, 'time', 1)
+        text_id = self.insertText(title, 'time', 1, '', '')
         if text_id != 0:
             self.result['data'].append({'text_id': text_id, 'part_count': 1})
             if self.insertSounds(text_id, [title]) == False:
@@ -153,7 +153,7 @@ class AIClockCrawler:
                 if text_id != 0:
                     return
 
-                text_id = self.insertText(title, 'weather', 1)
+                text_id = self.insertText(title, 'weather', 1, '', '')
                 if text_id != 0:
                     self.result['data'].append(
                         {'text_id': text_id, 'part_count': 1})
@@ -228,8 +228,12 @@ class AIClockCrawler:
 
                 contents.append(part_content)
 
+                preview_image = ''
+                if article['urlToImage'] != None:
+                    preview_image = article['urlToImage']
+
                 text_id = self.insertText(
-                    article['title'], article['description'], len(contents))
+                    article['title'], article['description'], len(contents), article['url'], preview_image)
 
                 if text_id != 0:
                     self.result['data'].append({'text_id': text_id,
@@ -277,10 +281,10 @@ class AIClockCrawler:
                           '%d-*' % (db_text[0]))
                 return 0
 
-    def insertText(self, title, description, part_count):
+    def insertText(self, title, description, part_count, url, preview_image):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\");' % (
-            self.speaker, self.category, title, description, part_count, created_at)
+        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\", \"%s\", \"%s\");' % (
+            self.speaker, self.category, title, description, part_count, url, preview_image, created_at)
         is_success = self.runSQL(sql)
         if is_success:
             self.cursor.execute('SELECT LAST_INSERT_ID();')
