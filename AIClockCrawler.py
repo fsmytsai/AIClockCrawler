@@ -120,8 +120,8 @@ class AIClockCrawler:
                 else:
                     chineseCity = ''
                 title = ''
-                code = int(weather_data['query']['results']
-                           ['channel']['item']['forecast'][0]['code'])
+                item = weather_data['query']['results']['channel']['item']
+                code = int(item['forecast'][0]['code'])
 
                 if code in [32, 33, 34]:
                     title += '今天%s天氣晴朗' % (chineseCity)
@@ -142,8 +142,12 @@ class AIClockCrawler:
                 elif code in [27, 28, 29, 30]:
                     title += '今天%s天氣晴朗，而且有雲' % (chineseCity)
 
-                if int(weather_data['query']['results']['channel']['item']['forecast'][0]['low']) < 15:
-                    title += '，最低溫度低於十五度，請注意保暖'
+                title += '，現在溫度%d度' % (int(item['condition']['temp']))
+                title += '，最高溫度%d度' % (int(item['forecast'][0]['high']))
+                title += '，最低溫度%d度' % (int(item['forecast'][0]['low']))
+
+                if int(item['forecast'][0]['low']) < 15:
+                    title += '，請注意保暖'
 
                 text_id = await self.checkDBText(session, title)
                 if text_id != 0:
