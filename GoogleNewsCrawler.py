@@ -7,8 +7,8 @@ from datetime import datetime
 
 
 class GoogleNewsCrawler:
-    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/newslogs/'
-    # log_absolute_path = '/var/crawler/AIClockCrawler/newslogs/'
+    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/newslogs/'
+    log_absolute_path = '/var/crawler/AIClockCrawler/newslogs/'
     google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     categorys = ['general', 'business', 'entertainment',
                  'health', 'science', 'sports', 'technology']

@@ -10,10 +10,10 @@ from datetime import datetime
 
 
 class AIClockCrawler:
-    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
@@ -213,14 +213,13 @@ class AIClockCrawler:
 
                 if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, db_sound[0], db_sound[1], self.speaker)) == False):
                     self.logFile.write('補音檔 text_id = %d part_no = %d speaker = %d\n' %
-                                        (db_sound[0], db_sound[1], self.speaker))
+                                       (db_sound[0], db_sound[1], self.speaker))
                     await self.downloadSpeech(session, db_sound[0], db_sound[1], db_sound[2])
 
                 self.results.append({'text_id': db_text[0],
                                      'part_count': db_text[4]})
 
                 return db_text[0]
-                
 
     def insertTimeOrWeatherText(self, title, description):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
