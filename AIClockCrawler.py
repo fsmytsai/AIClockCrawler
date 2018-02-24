@@ -10,15 +10,14 @@ from datetime import datetime
 
 
 class AIClockCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
-    google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
+    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
-    article_count = 0
-    result = {'is_success': False, 'data': []}
+    real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
+    results = []
 
     def __init__(self, hour, minute, speaker, category, latitude, longitude):
         self.hour = hour
@@ -48,18 +47,7 @@ class AIClockCrawler:
         tEnd = time.time()
         self.logFile.write('It cost %f sec' % (tEnd - tStart))
 
-        request_data_len = 1
-
-        if self.latitude != 1000:
-            request_data_len += 1
-
-        if self.category != '-1':
-            request_data_len += self.article_count
-
-        if len(self.result['data']) == request_data_len:
-            self.result['is_success'] = True
-
-        print(json.dumps(self.result))
+        print(json.dumps(self.results))
         self.logFile.close()
 
     async def getBingSpeechAPIToken(self):
@@ -93,14 +81,14 @@ class AIClockCrawler:
         elif self.hour in range(18, 24):
             title += '，晚上好'
 
-        text_id = await self.checkDBText(session, title)
+        text_id = await self.checkTimeOrWeatherText(session, title)
         if text_id != 0:
             return
 
-        text_id = self.insertText(title, 'time', 1, '', '')
+        text_id = self.insertTimeOrWeatherText(title, 'time')
         if text_id != 0:
-            self.result['data'].append({'text_id': text_id, 'part_count': 1})
-            if self.insertSounds(text_id, [title]) == False:
+            self.results.append({'text_id': text_id, 'part_count': 1})
+            if self.insertTimeOrWeatherSound(text_id, title) == False:
                 return
             await self.downloadSpeech(session, text_id, 0, title)
 
@@ -142,137 +130,77 @@ class AIClockCrawler:
                 elif code in [27, 28, 29, 30]:
                     title += '今天%s天氣晴朗，而且有雲' % (chineseCity)
 
-                title += '，現在溫度%d度' % (int(item['condition']['temp']))
-                title += '，最高溫度%d度' % (int(item['forecast'][0]['high']))
-                title += '，最低溫度%d度' % (int(item['forecast'][0]['low']))
+                title += '，氣溫最低%d度，最高%d度' % (
+                    int(item['forecast'][0]['low']), int(item['forecast'][0]['high']))
+
+                title += '，當前氣溫%d度' % (int(item['condition']['temp']))
 
                 if int(item['forecast'][0]['low']) < 15:
                     title += '，請注意保暖'
 
-                text_id = await self.checkDBText(session, title)
+                text_id = await self.checkTimeOrWeatherText(session, title)
                 if text_id != 0:
                     return
 
-                text_id = self.insertText(title, 'weather', 1, '', '')
+                text_id = self.insertTimeOrWeatherText(title, 'weather')
                 if text_id != 0:
-                    self.result['data'].append(
+                    self.results.append(
                         {'text_id': text_id, 'part_count': 1})
-                    if self.insertSounds(text_id, [title]) == False:
+                    if self.insertTimeOrWeatherSound(text_id, title) == False:
                         return
                     await self.downloadSpeech(session, text_id, 0, title)
 
     async def getGoogleNews(self, session):
-        async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (self.category, self.google_news_api_key)) as response:
-            news_data = await response.json()
+        tasks = []
+        news_list = self.getNewsList()
 
-            if news_data['status'] != 'ok':
-                self.logFile.write('請求 google 新聞失敗\n')
-                return
+        for news in news_list:
+            self.results.append(news)
 
-            tasks = []
-            datas = []
+            content_list = self.getContentList(news['text_id'])
 
-            for article in news_data['articles']:
-                # 10篇新聞結束。
-                if self.article_count == 5:
-                    break
+            for i in range(0, len(content_list)):
+                if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, news['text_id'], i, self.speaker))):
+                    self.logFile.write('音檔已存在 %d-%d-%d\n' %
+                                       (news['text_id'], i, self.speaker))
+                else:
+                    tasks.append(self.downloadSpeech(
+                        session, news['text_id'], i, content_list[i]))
 
-                # 沒簡介及蘋果日報(簡介跟標題一樣)跳過。
-                if article['description'] == None or article['description'] == '' or article['author'] == '蘋果日報':
-                    continue
+        await asyncio.gather(*tasks)
 
-                # 簡介結尾是 '…' 或不是 '。' 則找到最後一個 '。' 當簡介結尾，如果沒找到 '。' 則跳過。
-                if article['description'][-1] == '…' or article['description'][-1] != '。':
-                    last_period_index = article['description'].rfind('。')
-                    if last_period_index == -1:
-                        continue
-                    article['description'] = article['description'][0:last_period_index + 1]
-
-                # 將 '：' 換成 '說，' ，並去除空格跟換行。
-                article['title'] = article['title'].replace('：', '說，')
-                article['title'] = article['title'].replace(' ', '')
-                article['title'] = article['title'].replace('\n', '')
-                article['description'] = article['description'].replace(
-                    '：', '說，')
-                article['description'] = article['description'].replace(
-                    ' ', '')
-                article['description'] = article['description'].replace(
-                    '\n', '')
-
-                # 用標題檢查新聞是否已爬過。
-                text_id = await self.checkDBText(session, article['title'])
-                if text_id != 0:
-                    self.article_count += 1
-                    continue
-
-                # content = '第' + str(self.index) + '則新聞，標題，' + article['title'] + \
-                #     '。' + '簡介，' + article['description']
-
-                content = '標題，' + article['title'] + \
-                    '。' + '簡介，' + article['description']
-
-                self.article_count += 1
-
-                contents = []
-                part_content = content
-                while len(part_content) > 100:
-                    last_comma_index = part_content[0:100].rfind('，')
-                    last_period_index = part_content[0:100].rfind('。')
-                    if last_comma_index > last_period_index:
-                        last_index = last_comma_index
-                    else:
-                        last_index = last_period_index
-                    contents.append(part_content[0:last_index])
-                    part_content = part_content[last_index +
-                                                1:len(part_content)]
-
-                contents.append(part_content)
-
-                preview_image = ''
-                if article['urlToImage'] != None and 'http' in article['urlToImage']:
-                    preview_image = article['urlToImage']
-
-                text_id = self.insertText(
-                    article['title'], article['description'], len(contents), article['url'], preview_image)
-
-                if text_id != 0:
-                    self.result['data'].append({'text_id': text_id,
-                                                'part_count': len(contents)})
-
-                    if self.insertSounds(text_id, contents) == False:
-                        continue
-
-                    for i in range(0, len(contents)):
-                        task = asyncio.ensure_future(self.downloadSpeech(
-                            session, text_id, i, contents[i]))
-                        tasks.append(task)
-
-            await asyncio.gather(*tasks)
-
-    async def checkDBText(self, session, title):
+    def getNewsList(self):
         self.cursor.execute(
-            'select * from texts where speaker = \"%s\" and title = \"%s\";' % (self.speaker, title))
+            'select * from texts where category = \"%s\" order by text_id desc limit 10;' % (self.category))
+        db_texts = self.cursor.fetchall()
+        news_list = []
+        for db_text in db_texts:
+            news_list.append({'text_id': db_text[0],
+                              'part_count': db_text[4]})
+
+        return news_list
+
+    def getContentList(self, textId):
+        self.cursor.execute(
+            'select * from sounds where text_id = %d;' % (textId))
+        db_sounds = self.cursor.fetchall()
+        content_list = []
+        for db_sound in db_sounds:
+            content_list.append(db_sound[2])
+
+        return content_list
+
+    async def checkTimeOrWeatherText(self, session, title):
+        self.cursor.execute(
+            'select * from texts where title = \"%s\";' % (title))
         db_text = self.cursor.fetchone()
         if db_text is None:
             return 0
         else:
             self.cursor.execute(
                 'select * from sounds where text_id = %d;' % (db_text[0]))
-            db_sounds = self.cursor.fetchall()
-            if len(db_sounds) == db_text[5]:
-                self.logFile.write('已存在 text_id = %d\n' % (db_text[0]))
-
-                for sound in db_sounds:
-                    if(os.path.exists('%s%d-%d.wav' % (self.sound_absolute_path, sound[0], sound[1])) == False):
-                        self.logFile.write('補音檔 text_id = %d part_no = %d\n' %
-                                           (sound[0], sound[1]))
-                        await self.downloadSpeech(session, sound[0], sound[1], sound[2])
-
-                self.result['data'].append({'text_id': db_text[0],
-                                            'part_count': db_text[5]})
-
-                return db_text[0]
-            else:
+            db_sound = self.cursor.fetchone()
+            if db_sound is None:
                 self.logFile.write(
                     '音檔資料曾新增不完整 text_id = %d 將其刪除\n' % (db_text[0]))
                 sql = 'delete from texts where text_id = %d;' % (db_text[0])
@@ -280,11 +208,24 @@ class AIClockCrawler:
                 os.system('rm ' + self.sound_absolute_path +
                           '%d-*' % (db_text[0]))
                 return 0
+            else:
+                self.logFile.write('已存在 text_id = %d\n' % (db_text[0]))
 
-    def insertText(self, title, description, part_count, url, preview_image):
+                if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, db_sound[0], db_sound[1], self.speaker)) == False):
+                    self.logFile.write('補音檔 text_id = %d part_no = %d speaker = %d\n' %
+                                        (db_sound[0], db_sound[1], self.speaker))
+                    await self.downloadSpeech(session, db_sound[0], db_sound[1], db_sound[2])
+
+                self.results.append({'text_id': db_text[0],
+                                     'part_count': db_text[4]})
+
+                return db_text[0]
+                
+
+    def insertTimeOrWeatherText(self, title, description):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\", \"%s\", \"%s\");' % (
-            self.speaker, self.category, title, description, part_count, url, preview_image, created_at)
+        sql = 'insert into texts values(0, \"\", \"%s\", \"%s\", 1, \"\", \"\", \"%s\");' % (
+            title, description, created_at)
         is_success = self.runSQL(sql)
         if is_success:
             self.cursor.execute('SELECT LAST_INSERT_ID();')
@@ -294,24 +235,19 @@ class AIClockCrawler:
             self.logFile.write('insertText failed\n')
             return 0
 
-    def insertSounds(self, text_id, contents):
-        sql = 'insert into sounds values'
-        for i in range(0, len(contents)):
-            sql += '(%d, %d, \"%s\")' % (
-                text_id, i, contents[i])
-
-            if i != len(contents) - 1:
-                sql += ','
-            else:
-                sql += ';'
-
+    def insertTimeOrWeatherSound(self, text_id, content):
+        sql = 'insert into sounds values(%d, 0, \"%s\");' % (text_id, content)
         is_success = self.runSQL(sql)
+        return
         if is_success == False:
             self.logFile.write(
-                'insertSounds failed text_id = %d\n' % (text_id))
+                'insertTimeOrWeatherSound failed text_id = %d\n' % (text_id))
         return is_success
 
     async def downloadSpeech(self, session, text_id, part_no, content):
+        self.logFile.write('開始下載 %d-%d-%d\n' %
+                           (text_id, part_no, self.speaker))
+
         headers = {'Content-type': 'application/ssml+xml',
                    'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
                    'Authorization': 'Bearer ' + self.access_token}
@@ -322,22 +258,23 @@ class AIClockCrawler:
         voice.set('xml:lang', 'en-us')
         voice.set('xml:gender', 'Female')
         voice.set(
-            'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.speaker + ')')
+            'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
         voice.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
 
         async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
             sound = await response.read()
-            with open('%s%d-%d.wav' % (self.sound_absolute_path, text_id, part_no), 'wb') as f:
+            with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
                 if response.status != 200:
-                    self.logFile.write('error text_id = %d part_no = %d status = %d\n' %
-                                       (text_id, part_no, response.status))
+                    self.logFile.write('error text_id = %d part_no = %d speaker = %d status = %d\n' %
+                                       (text_id, part_no, self.speaker, response.status))
                     await asyncio.sleep(1.0)
                     await self.downloadSpeech(session, text_id, part_no, content)
                 else:
                     f.write(sound)
-                    self.logFile.write('新音檔 %d-%d\n' % (text_id, part_no))
+                    self.logFile.write('下載完成 %d-%d-%d\n' %
+                                       (text_id, part_no, self.speaker))
 
     def runSQL(self, sql):
         try:
@@ -362,20 +299,19 @@ if len(sys.argv) > 6:
     try:
         hour = int(sys.argv[1])
         minute = int(sys.argv[2])
-        spk = int(sys.argv[3])
+        speaker = int(sys.argv[3])
         ctg = int(sys.argv[4])
         latitude = float(sys.argv[5])
         longitude = float(sys.argv[6])
     except:
         print('輸入錯誤')
 
-    speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     category = ['general', 'business', 'entertainment',
                 'health', 'science', 'sports', 'technology', '-1']
 
-    if 0 <= hour < 24 and 0 <= minute < 59 and 0 <= spk < 3 and -1 <= ctg < 7:
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7:
         AIClockCrawler(
-            hour, minute, speaker[spk], category[ctg], latitude, longitude)
+            hour, minute, speaker, category[ctg], latitude, longitude)
     else:
         print('輸入錯誤')
 else:

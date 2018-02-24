@@ -9,11 +9,12 @@ from datetime import datetime
 
 
 class PromptToSpeech:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/pts_logs/'
-    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
-    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/pts_logs/'
+    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
+    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
+    real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     result = {'is_success': False, 'data': {}}
 
     def __init__(self, day, hour, minute, sencond, speaker):
@@ -69,46 +70,27 @@ class PromptToSpeech:
 
         title += '後響鈴'
 
-        text_id = self.checkDBText(title)
+        text_id = self.checkPromptText(title)
         if text_id != 0:
             return
 
-        text_id = self.insertText(title, 'prompt', 1, '', '')
+        text_id = self.insertPromptText(title)
         if text_id != 0:
-            self.result['data'] = {'text_id': text_id, 'part_count': 1}
-            if self.insertSounds(text_id, [title]) == False:
+            if self.insertPromptSound(text_id, [title]) == False:
                 return
             self.downloadSpeech(text_id, 0, title)
 
-    def checkDBText(self, title):
+    def checkPromptText(self, title):
         self.cursor.execute(
-            'select * from texts where speaker = \"%s\" and title = \"%s\";' % (self.speaker, title))
+            'select * from texts where title = \"%s\";' % (title))
         db_text = self.cursor.fetchone()
         if db_text is None:
             return 0
         else:
             self.cursor.execute(
                 'select * from sounds where text_id = %d;' % (db_text[0]))
-            db_sounds = self.cursor.fetchall()
-            if len(db_sounds) == db_text[5]:
-                self.logFile.write('已存在 text_id = %d\n' % (db_text[0]))
-
-                isReDownload = False
-
-                for sound in db_sounds:
-                    if(os.path.exists('%s%d-%d.wav' % (self.sound_absolute_path, sound[0], sound[1])) == False):
-                        self.logFile.write('補音檔 text_id = %d part_no = %d\n' %
-                                           (sound[0], sound[1]))
-                        isReDownload = True
-                        self.downloadSpeech(sound[0], sound[1], sound[2])
-
-                if isReDownload == False:
-                    self.result['is_success'] = True
-                self.result['data'] = {'text_id': db_text[0],
-                                       'part_count': db_text[5]}
-
-                return db_text[0]
-            else:
+            db_sound = self.cursor.fetchone()
+            if db_sound is None:
                 self.logFile.write(
                     '音檔資料曾新增不完整 text_id = %d 將其刪除\n' % (db_text[0]))
                 sql = 'delete from texts where text_id = %d;' % (db_text[0])
@@ -116,11 +98,24 @@ class PromptToSpeech:
                 os.system('rm ' + self.sound_absolute_path +
                           '%d-*' % (db_text[0]))
                 return 0
+            else:
+                self.logFile.write('已存在 text_id = %d\n' % (db_text[0]))
 
-    def insertText(self, title, description, part_count, url, preview_image):
+                if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, db_sound[0], db_sound[1], self.speaker)) == False):
+                    self.logFile.write('補音檔 text_id = %d part_no = %d speaker = %d\n' %
+                                       (db_sound[0], db_sound[1], self.speaker))
+                    self.downloadSpeech(db_sound[0], db_sound[1], db_sound[2])
+
+                self.result['is_success'] = True
+                self.result['data'] = {'text_id': db_text[0],
+                                       'part_count': db_text[4]}
+
+                return db_text[0]
+
+    def insertPromptText(self, title):
         created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        sql = 'insert into texts values(0, \"%s\", \"%s\", \"%s\", \"%s\", %d, \"%s\", \"%s\", \"%s\");' % (
-            self.speaker, 'prompt', title, description, part_count, url, preview_image, created_at)
+        sql = 'insert into texts values(0, \"\", \"%s\", \"prompt\", 1, \"\", \"\", \"%s\");' % (
+            title, created_at)
         is_success = self.runSQL(sql)
         if is_success:
             self.cursor.execute('SELECT LAST_INSERT_ID();')
@@ -130,21 +125,12 @@ class PromptToSpeech:
             self.logFile.write('insertText failed\n')
             return 0
 
-    def insertSounds(self, text_id, contents):
-        sql = 'insert into sounds values'
-        for i in range(0, len(contents)):
-            sql += '(%d, %d, \"%s\")' % (
-                text_id, i, contents[i])
-
-            if i != len(contents) - 1:
-                sql += ','
-            else:
-                sql += ';'
-
+    def insertPromptSound(self, text_id, content):
+        sql = 'insert into sounds values(%d, 0, \"%s\");' % (text_id, content)
         is_success = self.runSQL(sql)
         if is_success == False:
             self.logFile.write(
-                'insertSounds failed text_id = %d\n' % (text_id))
+                'insertPromptSound failed text_id = %d\n' % (text_id))
         return is_success
 
     def downloadSpeech(self, text_id, part_no, content):
@@ -158,7 +144,7 @@ class PromptToSpeech:
         voice.set('xml:lang', 'en-us')
         voice.set('xml:gender', 'Female')
         voice.set(
-            'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.speaker + ')')
+            'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
         voice.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
@@ -166,15 +152,18 @@ class PromptToSpeech:
         response = requests.post('https://speech.platform.bing.com/synthesize',
                                  data=ElementTree.tostring(body), headers=headers)
         sound = response.content
-        with open('%s%d-%d.wav' % (self.sound_absolute_path, text_id, part_no), 'wb') as f:
+        with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
             if response.status_code != 200:
-                self.logFile.write('error text_id = %d part_no = %d status_code = %d\n' %
-                                   (text_id, part_no, response.status_code))
+                self.logFile.write('error text_id = %d part_no = %d speaker = %d status = %d\n' %
+                                   (text_id, part_no, self.speaker, response.status))
                 time.sleep(1)
                 self.downloadSpeech(text_id, part_no, content)
             else:
                 f.write(sound)
-                self.logFile.write('新音檔 %d-%d\n' % (text_id, part_no))
+                self.logFile.write('下載完成 %d-%d-%d\n' %
+                                   (text_id, part_no, self.speaker))
+                
+                self.result['data'] = {'text_id': text_id, 'part_count': 1}
                 self.result['is_success'] = True
 
     def runSQL(self, sql):
@@ -201,14 +190,12 @@ if len(sys.argv) > 5:
         hour = int(sys.argv[2])
         minute = int(sys.argv[3])
         second = int(sys.argv[4])
-        spk = int(sys.argv[5])
+        speaker = int(sys.argv[5])
     except:
         print('輸入錯誤')
 
-    speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
-
-    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= second < 60 and 0 <= spk < 3:
-        PromptToSpeech(day, hour, minute, second, speaker[spk])
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= second < 60 and 0 <= speaker < 3:
+        PromptToSpeech(day, hour, minute, second, speaker)
     else:
         print('輸入錯誤')
 else:
