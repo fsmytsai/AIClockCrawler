@@ -93,62 +93,87 @@ class AIClockCrawler:
             await self.downloadSpeech(session, text_id, 0, title)
 
     async def getYahooWeather(self, session):
-        async with session.get('https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20u=%22c%22%20and%20%20woeid%20in%20(SELECT%20woeid%20FROM%20geo.places%20WHERE%20text=%22(' + str(self.latitude) + ',' + str(self.longitude) + ')%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys') as yResponse:
-            weather_data = await yResponse.json()
+        async with session.get('https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20weather.forecast%20where%20u=%22c%22%20and%20%20woeid%20in%20(SELECT%20woeid%20FROM%20geo.places%20WHERE%20text=%22(' + str(self.latitude) + ',' + str(self.longitude) + ')%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys') as response:
+            weather_data = await response.json()
             if weather_data['query']['count'] == 0:
                 self.logFile.write('請求 yahoo 天氣失敗\n')
                 return
 
-            englishCity = weather_data['query']['results']['channel']['location']['city']
+            english_region = weather_data['query']['results']['channel']['location']['region']
 
-            async with session.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%f,%f&keyword=%s&rankby=distance&language=zh-TW&key=%s' % (self.latitude, self.longitude, englishCity, self.google_place_api_key)) as gResponse:
-                place_data = await gResponse.json()
-                if len(place_data['results']) > 0:
-                    chineseCity = place_data['results'][0]['name']
-                else:
-                    chineseCity = ''
-                title = ''
-                item = weather_data['query']['results']['channel']['item']
-                code = int(item['forecast'][0]['code'])
+            chinese_region = await self.getChineseRegion(session, english_region)
 
-                if code in [32, 33, 34]:
-                    title += '今天%s天氣晴朗' % (chineseCity)
-                elif code in [36]:
-                    title += '今天%s天氣很熱' % (chineseCity)
-                elif code in [2, 23]:
-                    title += '今天%s風很大，出門在外請小心' % (chineseCity)
-                elif code in [3, 4, 9, 10, 11, 12, 37, 38, 39, 40, 45, 47]:
-                    title += '今天%s會下雨，出門記得帶把傘' % (chineseCity)
-                elif code in [5, 6, 7, 41, 42, 43, 46]:
-                    title += '今天%s會下雪，出門記得帶把傘' % (chineseCity)
-                elif code in [8, 35]:
-                    title += '今天%s會下冰雹，出門記得帶把傘' % (chineseCity)
-                elif code in [25]:
-                    title += '今天%s天氣很冷' % (chineseCity)
-                elif code in [26, 44]:
-                    title += '今天%s是陰天'
-                elif code in [27, 28, 29, 30]:
-                    title += '今天%s天氣晴朗，而且有雲' % (chineseCity)
+            title = ''
+            item = weather_data['query']['results']['channel']['item']
+            code = int(item['forecast'][0]['code'])
 
-                title += '，氣溫最低%d度，最高%d度' % (
-                    int(item['forecast'][0]['low']), int(item['forecast'][0]['high']))
+            if code in [32, 33, 34]:
+                title += '今天%s天氣晴朗' % (chinese_region)
+            elif code in [36]:
+                title += '今天%s天氣很熱' % (chinese_region)
+            elif code in [2, 23]:
+                title += '今天%s風很大，出門在外請小心' % (chinese_region)
+            elif code in [3, 4, 9, 10, 11, 12, 37, 38, 39, 40, 45, 47]:
+                title += '今天%s會下雨，出門記得帶把傘' % (chinese_region)
+            elif code in [5, 6, 7, 41, 42, 43, 46]:
+                title += '今天%s會下雪，出門記得帶把傘' % (chinese_region)
+            elif code in [8, 35]:
+                title += '今天%s會下冰雹，出門記得帶把傘' % (chinese_region)
+            elif code in [25]:
+                title += '今天%s天氣很冷' % (chinese_region)
+            elif code in [26, 44]:
+                title += '今天%s是陰天' % (chinese_region)
+            elif code in [27, 28, 29, 30]:
+                title += '今天%s天氣晴朗，而且有雲' % (chinese_region)
 
-                title += '，當前氣溫%d度' % (int(item['condition']['temp']))
+            title += '，氣溫最低%d度，最高%d度' % (
+                int(item['forecast'][0]['low']), int(item['forecast'][0]['high']))
 
-                if int(item['forecast'][0]['low']) < 15:
-                    title += '，請注意保暖'
+            title += '，當前氣溫%d度' % (int(item['condition']['temp']))
 
-                text_id = await self.checkTimeOrWeatherText(session, title)
-                if text_id != 0:
+            if int(item['forecast'][0]['low']) < 15:
+                title += '，請注意保暖'
+
+            if chinese_region != '':
+                air_quality_data = await self.getAirQualityData(session, chinese_region)
+                if air_quality_data != None:
+                    title += '，空氣品質指數維%d' % (air_quality_data['AQI'])
+                    if air_quality_data['AQI'] <= 100:
+                        title += '，狀態%s' % (air_quality_data['Status'])
+                    else:
+                        title += '，%s' % (air_quality_data['Status'])
+
+            text_id = await self.checkTimeOrWeatherText(session, title)
+            if text_id != 0:
+                return
+
+            text_id = self.insertTimeOrWeatherText(title, 'weather')
+            if text_id != 0:
+                self.results.append(
+                    {'text_id': text_id, 'part_count': 1})
+                if self.insertTimeOrWeatherSound(text_id, title) == False:
                     return
+                await self.downloadSpeech(session, text_id, 0, title)
 
-                text_id = self.insertTimeOrWeatherText(title, 'weather')
-                if text_id != 0:
-                    self.results.append(
-                        {'text_id': text_id, 'part_count': 1})
-                    if self.insertTimeOrWeatherSound(text_id, title) == False:
-                        return
-                    await self.downloadSpeech(session, text_id, 0, title)
+    async def getChineseRegion(self, session, english_region):
+        async with session.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%f,%f&keyword=%s&rankby=distance&language=zh-TW&key=%s' % (self.latitude, self.longitude, english_region, self.google_place_api_key)) as response:
+            place_data = await response.json()
+            if len(place_data['results']) > 0:
+                place_data['results'][0]['name'] = place_data['results'][0]['name'].replace(
+                    '台', '臺')
+                return place_data['results'][0]['name']
+            else:
+                self.logFile.write('getChineseRegion Failed\n')
+                return ''
+
+    async def getAirQualityData(self, session, chinese_region):
+        async with session.get('https://pm25.lass-net.org/data/last-all-epa.json') as response:
+            air_quality_data = await response.json()
+            for air_quality in air_quality_data['feeds']:
+                if air_quality['County'] == chinese_region:
+                    return air_quality
+            self.logFile.write('getAirQualityData Failed\n')
+            return None
 
     async def getGoogleNews(self, session):
         tasks = []
@@ -160,7 +185,7 @@ class AIClockCrawler:
             content_list = self.getContentList(news['text_id'])
 
             for i in range(0, len(content_list)):
-                if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, news['text_id'], i, self.speaker))):
+                if os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, news['text_id'], i, self.speaker)):
                     self.logFile.write('音檔已存在 %d-%d-%d\n' %
                                        (news['text_id'], i, self.speaker))
                 else:
@@ -180,9 +205,9 @@ class AIClockCrawler:
 
         return news_list
 
-    def getContentList(self, textId):
+    def getContentList(self, text_id):
         self.cursor.execute(
-            'select * from sounds where text_id = %d;' % (textId))
+            'select * from sounds where text_id = %d;' % (text_id))
         db_sounds = self.cursor.fetchall()
         content_list = []
         for db_sound in db_sounds:
@@ -211,7 +236,7 @@ class AIClockCrawler:
             else:
                 self.logFile.write('已存在 text_id = %d\n' % (db_text[0]))
 
-                if(os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, db_sound[0], db_sound[1], self.speaker)) == False):
+                if os.path.exists('%s%d-%d-%d.wav' % (self.sound_absolute_path, db_sound[0], db_sound[1], self.speaker)) == False:
                     self.logFile.write('補音檔 text_id = %d part_no = %d speaker = %d\n' %
                                        (db_sound[0], db_sound[1], self.speaker))
                     await self.downloadSpeech(session, db_sound[0], db_sound[1], db_sound[2])
