@@ -135,13 +135,9 @@ class AIClockCrawler:
                 title += '，請注意保暖'
 
             if chinese_region != '':
-                air_quality_data = await self.getAirQualityData(session, chinese_region)
-                if air_quality_data != None:
-                    title += '，空氣品質指數維%d' % (air_quality_data['AQI'])
-                    if air_quality_data['AQI'] <= 100:
-                        title += '，狀態%s' % (air_quality_data['Status'])
-                    else:
-                        title += '，%s' % (air_quality_data['Status'])
+                air_quality_str = await self.getAirQualityStr(session, chinese_region)
+                if air_quality_str != '':
+                    title += air_quality_str
 
             text_id = await self.checkTimeOrWeatherText(session, title)
             if text_id != 0:
@@ -166,14 +162,34 @@ class AIClockCrawler:
                 self.logFile.write('getChineseRegion Failed\n')
                 return ''
 
-    async def getAirQualityData(self, session, chinese_region):
+    async def getAirQualityStr(self, session, chinese_region):
         async with session.get('https://pm25.lass-net.org/data/last-all-epa.json') as response:
             air_quality_data = await response.json()
+            max = 0
+            min = 500
             for air_quality in air_quality_data['feeds']:
                 if air_quality['County'] == chinese_region:
-                    return air_quality
-            self.logFile.write('getAirQualityData Failed\n')
-            return None
+                    if air_quality['AQI'] > max:
+                        max = air_quality['AQI']
+                    if air_quality['AQI'] < min:
+                        min = air_quality['AQI']
+
+            if max == 0 and min == 500:
+                self.logFile.write('getAirQualityData Failed\n')
+                return ''
+
+            air_quality_str = '，空氣品質指數維%d到%d' % (min, max)
+            if max <= 50:
+                air_quality_str += '，狀態良好'
+            elif max <= 100:
+                air_quality_str += '，狀態普通'
+            elif max <= 150:
+                air_quality_str += '，不適於敏感人群，建議戴上口罩再出門'
+            elif max <= 200:
+                air_quality_str += '，狀態很差，建議戴上口罩再出門'
+            else:
+                air_quality_str += '，狀態非常差，建議不要出門'
+            return air_quality_str
 
     async def getGoogleNews(self, session):
         tasks = []
