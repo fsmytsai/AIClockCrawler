@@ -178,7 +178,7 @@ class AIClockCrawler:
                 self.logFile.write('getAirQualityData Failed\n')
                 return ''
 
-            air_quality_str = '，空氣品質指數維%d到%d' % (min, max)
+            air_quality_str = '。空氣品質指數維%d到%d' % (min, max)
             if max <= 50:
                 air_quality_str += '，狀態良好'
             elif max <= 100:
