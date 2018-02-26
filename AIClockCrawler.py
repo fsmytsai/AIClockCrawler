@@ -19,11 +19,12 @@ class AIClockCrawler:
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
 
-    def __init__(self, hour, minute, speaker, category, latitude, longitude):
+    def __init__(self, hour, minute, speaker, category, news_count, latitude, longitude):
         self.hour = hour
         self.minute = minute
         self.speaker = speaker
         self.category = category
+        self.news_count = news_count
         self.latitude = latitude
         self.longitude = longitude
 
@@ -212,7 +213,7 @@ class AIClockCrawler:
 
     def getNewsList(self):
         self.cursor.execute(
-            'select * from texts where category = \"%s\" order by text_id desc limit 10;' % (self.category))
+            'select * from texts where category = \"%s\" order by text_id desc limit %d;' % (self.category, self.news_count))
         db_texts = self.cursor.fetchall()
         news_list = []
         for db_text in db_texts:
@@ -332,26 +333,28 @@ arg1 = hour 0~23 小時
 arg2 = minute 0~59 分鐘
 arg3 = speaker 0=Yating, Apollo 1=HanHanRUS 2=Zhiwei, Apollo
 arg4 = category -1=no news 0=general 1=business 2=entertainment 3=health 4=science 5=sports 6=technology
-arg5 = latitude 緯度 -90~90 1000=無需天氣
-arg6 = longitude 經度 -180~180
+arg5 = news_count 6~12
+arg6 = latitude 緯度 -90~90 1000=無需天氣
+arg7 = longitude 經度 -180~180
 """
-if len(sys.argv) > 6:
+if len(sys.argv) > 7:
     try:
         hour = int(sys.argv[1])
         minute = int(sys.argv[2])
         speaker = int(sys.argv[3])
         ctg = int(sys.argv[4])
-        latitude = float(sys.argv[5])
-        longitude = float(sys.argv[6])
+        news_count = int(sys.argv[5])
+        latitude = float(sys.argv[6])
+        longitude = float(sys.argv[7])
     except:
         print('輸入錯誤')
 
     category = ['general', 'business', 'entertainment',
                 'health', 'science', 'sports', 'technology', '-1']
 
-    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7:
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7 and 6 <= news_count <= 12:
         AIClockCrawler(
-            hour, minute, speaker, category[ctg], latitude, longitude)
+            hour, minute, speaker, category[ctg], news_count, latitude, longitude)
     else:
         print('輸入錯誤')
 else:
