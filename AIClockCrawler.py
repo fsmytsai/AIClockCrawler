@@ -64,7 +64,7 @@ class AIClockCrawler:
                 if self.latitude != 1000:
                     await self.getYahooWeather(session)
                 if self.category != '-1':
-                    await self.getGoogleNews(session)
+                    await self.getNews(session)
 
     async def getTimeSpeech(self, session):
         title = '嗨，現在時間' + str(self.hour) + '點'
@@ -192,7 +192,7 @@ class AIClockCrawler:
                 air_quality_str += '，狀態非常差，建議不要出門'
             return air_quality_str
 
-    async def getGoogleNews(self, session):
+    async def getNews(self, session):
         tasks = []
         news_list = self.getNewsList()
 

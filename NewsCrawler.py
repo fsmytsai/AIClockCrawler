@@ -6,10 +6,10 @@ import os
 from datetime import datetime
 
 
-class GoogleNewsCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/newslogs/'
+class NewsCrawler:
+    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/news_logs/'
     log_absolute_path = '/var/crawler/AIClockCrawler/news_logs/'
-    google_news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
+    news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     categorys = ['general', 'business', 'entertainment',
                  'health', 'science', 'sports', 'technology']
 
@@ -44,7 +44,7 @@ class GoogleNewsCrawler:
 
     async def getGoogleNews(self, session, category):
         self.logFile.write('開始請求 google 新聞 類別：%s\n' % (category))
-        async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (category, self.google_news_api_key)) as response:
+        async with session.get('https://newsapi.org/v2/top-headlines?country=tw&category=%s&apiKey=%s' % (category, self.news_api_key)) as response:
             news_data = await response.json()
 
             if news_data['status'] != 'ok':
@@ -178,4 +178,4 @@ class GoogleNewsCrawler:
             return False
 
 
-GoogleNewsCrawler()
+NewsCrawler()
