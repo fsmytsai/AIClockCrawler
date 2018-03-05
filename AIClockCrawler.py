@@ -10,10 +10,10 @@ from datetime import datetime
 
 
 class AIClockCrawler:
-    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
