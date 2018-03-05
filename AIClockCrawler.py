@@ -105,34 +105,41 @@ class AIClockCrawler:
             chinese_region = await self.getChineseRegion(session, english_region)
 
             title = ''
-            item = weather_data['query']['results']['channel']['item']
-            code = int(item['forecast'][0]['code'])
+            if datetime.now().hour >= 20:
+                forecast = weather_data['query']['results']['channel']['item']['forecast'][1]
+                day = '明天'
+            else:
+                forecast = weather_data['query']['results']['channel']['item']['forecast'][0]
+                day = '今天'
+
+            code = int(forecast['code'])
 
             if code in [32, 33, 34]:
-                title += '今天%s天氣晴朗' % (chinese_region)
+                title += '%s%s天氣晴朗' % (day, chinese_region)
             elif code in [36]:
-                title += '今天%s天氣很熱' % (chinese_region)
+                title += '%s%s天氣很熱' % (day, chinese_region)
             elif code in [2, 23]:
-                title += '今天%s風很大，出門在外請小心' % (chinese_region)
+                title += '%s%s風很大，出門在外請小心' % (day, chinese_region)
             elif code in [3, 4, 9, 10, 11, 12, 37, 38, 39, 40, 45, 47]:
-                title += '今天%s會下雨，出門記得帶把傘' % (chinese_region)
+                title += '%s%s會下雨，出門記得帶把傘' % (day, chinese_region)
             elif code in [5, 6, 7, 41, 42, 43, 46]:
-                title += '今天%s會下雪，出門記得帶把傘' % (chinese_region)
+                title += '%s%s會下雪，出門記得帶把傘' % (day, chinese_region)
             elif code in [8, 35]:
-                title += '今天%s會下冰雹，出門記得帶把傘' % (chinese_region)
+                title += '%s%s會下冰雹，出門記得帶把傘' % (day, chinese_region)
             elif code in [25]:
-                title += '今天%s天氣很冷' % (chinese_region)
+                title += '%s%s天氣很冷' % (day, chinese_region)
             elif code in [26, 44]:
-                title += '今天%s是陰天' % (chinese_region)
+                title += '%s%s是陰天' % (day, chinese_region)
             elif code in [27, 28, 29, 30]:
-                title += '今天%s天氣晴朗，而且有雲' % (chinese_region)
+                title += '%s%s天氣晴朗，而且有雲' % (day, chinese_region)
 
             title += '，氣溫最低%d度，最高%d度' % (
-                int(item['forecast'][0]['low']), int(item['forecast'][0]['high']))
+                int(forecast['low']), int(forecast['high']))
 
-            title += '，當前氣溫%d度' % (int(item['condition']['temp']))
+            title += '，當前氣溫%d度' % (
+                int(weather_data['query']['results']['channel']['item']['condition']['temp']))
 
-            if int(item['forecast'][0]['low']) < 15:
+            if int(forecast['low']) < 15:
                 title += '，請注意保暖'
 
             if chinese_region != '':
