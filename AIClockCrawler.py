@@ -10,10 +10,10 @@ from datetime import datetime
 
 
 class AIClockCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
     bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
@@ -177,10 +177,11 @@ class AIClockCrawler:
             min = 500
             for air_quality in air_quality_data['feeds']:
                 if air_quality['County'] == chinese_region:
-                    if air_quality['AQI'] > max:
-                        max = air_quality['AQI']
-                    if air_quality['AQI'] < min:
-                        min = air_quality['AQI']
+                    if 'AQI' in air_quality:
+                        if air_quality['AQI'] > max:
+                            max = air_quality['AQI']
+                        if air_quality['AQI'] < min:
+                            min = air_quality['AQI']
 
             if max == 0 and min == 500:
                 self.logFile.write('getAirQualityData Failed\n')
