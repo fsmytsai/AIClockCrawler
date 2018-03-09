@@ -15,9 +15,10 @@ class AIClockCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
-    bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
+    bing_speech_api_key = 'c251429f2b504b0b853a8c43644e169d'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
+    download_count = 0
 
     def __init__(self, hour, minute, speaker, category, news_count, latitude, longitude):
         self.hour = hour
@@ -46,6 +47,7 @@ class AIClockCrawler:
         loop.close()
 
         tEnd = time.time()
+        self.logFile.write('Download Count = %d\n' % (self.download_count))
         self.logFile.write('It cost %f sec' % (tEnd - tStart))
 
         print(json.dumps(self.results))
@@ -297,6 +299,11 @@ class AIClockCrawler:
         self.logFile.write('開始下載 %d-%d-%d\n' %
                            (text_id, part_no, self.speaker))
 
+        self.download_count += 1
+        if self.download_count > 45:
+            self.logFile.write('超出下載量限制\n')
+            return
+
         headers = {'Content-type': 'application/ssml+xml',
                    'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
                    'Authorization': 'Bearer ' + self.access_token}
@@ -341,7 +348,7 @@ arg1 = hour 0~23 小時
 arg2 = minute 0~59 分鐘
 arg3 = speaker 0=Yating, Apollo 1=HanHanRUS 2=Zhiwei, Apollo
 arg4 = category -1=no news 0=general 1=business 2=entertainment 3=health 4=science 5=sports 6=technology
-arg5 = news_count 6~12
+arg5 = news_count 6~10
 arg6 = latitude 緯度 -90~90 1000=無需天氣
 arg7 = longitude 經度 -180~180
 """
@@ -360,7 +367,7 @@ if len(sys.argv) > 7:
     category = ['general', 'business', 'entertainment',
                 'health', 'science', 'sports', 'technology', '-1']
 
-    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7 and 6 <= news_count <= 12:
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7 and 6 <= news_count <= 10:
         AIClockCrawler(
             hour, minute, speaker, category[ctg], news_count, latitude, longitude)
     else:

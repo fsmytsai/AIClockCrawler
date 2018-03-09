@@ -17,16 +17,17 @@ class DownloadMySound:
                  {'complete': '第九則新聞', 'alias': 'news9'},
                  {'complete': '第十則新聞', 'alias': 'news10'},
                  {'complete': '第十一則新聞', 'alias': 'news11'},
-                 {'complete': '第十二則新聞', 'alias': 'news12'},                 
+                 {'complete': '第十二則新聞', 'alias': 'news12'},
                  {'complete': '祝您有美好的一天，再見', 'alias': 'bye'},
                  {'complete': '嗨，我將為您播報天氣及新聞', 'alias': 'hello'},
+                 {'complete': '此音檔已遺失', 'alias': 'lost'},
                  {'complete': '本次播報的不是即時資料，原因可能是網路不穩', 'alias': 'olddata'}]
 
     all_speekers = [{'complete': 'Yating, Apollo', 'alias': 'f1'},
                     {'complete': 'HanHanRUS', 'alias': 'f2'},
                     {'complete': 'Zhiwei, Apollo', 'alias': 'm1'}]
     absolute_path = './'
-    api_key = '151812742a7b48c5aa9f3192cac54c4b'
+    api_key = 'c251429f2b504b0b853a8c43644e169d'
 
     def __init__(self):
         tStart = time.time()

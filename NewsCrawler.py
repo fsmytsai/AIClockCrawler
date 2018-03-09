@@ -11,7 +11,7 @@ class NewsCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/news_logs/'
     news_api_key = '74970d4bf19d4cf89565b65d9d45df35'
     categorys = ['general', 'business', 'entertainment',
-                 'health', 'science', 'sports', 'technology']
+                 'health', 'science', 'sports']
 
     def __init__(self):
         oldmask = os.umask(000)
@@ -90,6 +90,10 @@ class NewsCrawler:
                 while len(part_content) > 100:
                     last_comma_index = part_content[0:100].rfind('，')
                     last_period_index = part_content[0:100].rfind('。')
+                    # 找不到逗號及句號跳過
+                    if last_comma_index == -1 and last_period_index == -1:
+                        break
+
                     if last_comma_index > last_period_index:
                         last_index = last_comma_index
                     else:
@@ -98,27 +102,28 @@ class NewsCrawler:
                     part_content = part_content[last_index +
                                                 1:len(part_content)]
 
-                contents.append(part_content)
+                if len(part_content) <= 100:
+                    contents.append(part_content)
 
-                preview_image = ''
-                if article['urlToImage'] != None and 'http' in article['urlToImage']:
-                    preview_image = article['urlToImage']
+                    preview_image = ''
+                    if article['urlToImage'] != None and 'http' in article['urlToImage']:
+                        preview_image = article['urlToImage']
 
-                text_id = self.insertText(
-                    category, article['title'], article['description'], len(contents), article['url'], preview_image)
+                    text_id = self.insertText(
+                        category, article['title'], article['description'], len(contents), article['url'], preview_image)
 
-                if text_id != 0:
-                    self.logFile.write(
-                        '新增 text 資料成功 textId = %d category = %s\n' % (text_id, category))
-                    if self.insertSounds(text_id, contents):
+                    if text_id != 0:
                         self.logFile.write(
-                            '新增 sounds 資料成功 textId = %d category = %s\n' % (text_id, category))
+                            '新增 text 資料成功 textId = %d category = %s\n' % (text_id, category))
+                        if self.insertSounds(text_id, contents):
+                            self.logFile.write(
+                                '新增 sounds 資料成功 textId = %d category = %s\n' % (text_id, category))
+                        else:
+                            self.logFile.write(
+                                '新增 sounds 資料失敗 textId = %d category = %s\n' % (text_id, category))
                     else:
                         self.logFile.write(
-                            '新增 sounds 資料失敗 textId = %d category = %s\n' % (text_id, category))
-                else:
-                    self.logFile.write(
-                        '新增 text 資料失敗 category = %s\n' % (category))
+                            '新增 text 資料失敗 category = %s\n' % (category))
 
     def checkDBText(self, category, title):
         self.cursor.execute(
