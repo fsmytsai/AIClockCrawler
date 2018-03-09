@@ -13,9 +13,10 @@ class PromptToSpeech:
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
     log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
-    bing_speech_api_key = '151812742a7b48c5aa9f3192cac54c4b'
+    bing_speech_api_key = 'c251429f2b504b0b853a8c43644e169d'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     result = {'is_success': False, 'data': {}}
+    download_count = 0
 
     def __init__(self, day, hour, minute, sencond, speaker):
         self.day = day
@@ -39,6 +40,7 @@ class PromptToSpeech:
         self.getBingSpeechAPIToken()
 
         tEnd = time.time()
+        self.logFile.write('Download Count = %d\n' % (self.download_count))
         self.logFile.write('It cost %f sec' % (tEnd - tStart))
 
         print(json.dumps(self.result))
@@ -134,6 +136,11 @@ class PromptToSpeech:
         return is_success
 
     def downloadSpeech(self, text_id, part_no, content):
+        self.download_count += 1
+        if self.download_count > 3:
+            self.logFile.write('超出下載量限制\n')
+            return
+
         headers = {'Content-type': 'application/ssml+xml',
                    'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
                    'Authorization': 'Bearer ' + self.access_token}
