@@ -178,7 +178,7 @@ class AIClockCrawler:
             max = 0
             min = 500
             for air_quality in air_quality_data['feeds']:
-                if air_quality['County'] == chinese_region:
+                if chinese_region in air_quality['County']:
                     if 'AQI' in air_quality:
                         if air_quality['AQI'] > max:
                             max = air_quality['AQI']
