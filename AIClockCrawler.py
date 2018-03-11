@@ -365,9 +365,9 @@ if len(sys.argv) > 7:
         print('輸入錯誤')
 
     category = ['general', 'business', 'entertainment',
-                'health', 'science', 'sports', 'technology', '-1']
+                'health', 'science', 'sports', '-1']
 
-    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 7 and 6 <= news_count <= 10:
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 6 and 6 <= news_count <= 10:
         AIClockCrawler(
             hour, minute, speaker, category[ctg], news_count, latitude, longitude)
     else:
