@@ -15,7 +15,7 @@ class AIClockCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
-    bing_speech_api_key = 'c251429f2b504b0b853a8c43644e169d'
+    bing_speech_api_key = 'ba7e528d3cc64de7a946943ac82c40d0'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
     download_count = 0
@@ -76,7 +76,7 @@ class AIClockCrawler:
             title += str(self.minute) + '分'
 
         if self.hour in range(4, 12):
-            title += '，早上好'
+            title += '，早安'
         elif self.hour in range(12, 14):
             title += '，午安'
         elif self.hour in range(14, 18):
