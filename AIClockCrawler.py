@@ -300,7 +300,7 @@ class AIClockCrawler:
                            (text_id, part_no, self.speaker))
 
         self.download_count += 1
-        if self.download_count > 45:
+        if self.download_count > 80:
             self.logFile.write('超出下載量限制\n')
             return
 
