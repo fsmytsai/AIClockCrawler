@@ -13,7 +13,7 @@ class PromptToSpeech:
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
     log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
-    bing_speech_api_key = 'c251429f2b504b0b853a8c43644e169d'
+    bing_speech_api_key = 'ba7e528d3cc64de7a946943ac82c40d0'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     result = {'is_success': False, 'data': {}}
     download_count = 0
