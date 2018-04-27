@@ -133,7 +133,7 @@ class AIClockCrawler:
             elif code in [26, 44]:
                 title += '%s%s是陰天' % (day, chinese_region)
             elif code in [27, 28, 29, 30]:
-                title += '%s%s天氣晴朗，而且有雲' % (day, chinese_region)
+                title += '%s%s多雲' % (day, chinese_region)
 
             title += '，氣溫最低%d度，最高%d度' % (
                 int(forecast['low']), int(forecast['high']))
