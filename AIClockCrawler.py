@@ -15,7 +15,7 @@ class AIClockCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
-    bing_speech_api_key = 'ba7e528d3cc64de7a946943ac82c40d0'
+    bing_speech_api_key = '6cecb861c41b4b1681e5efb3780c3679'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
     download_count = 0
@@ -300,7 +300,7 @@ class AIClockCrawler:
                            (text_id, part_no, self.speaker))
 
         self.download_count += 1
-        if self.download_count > 45:
+        if self.download_count > 80:
             self.logFile.write('超出下載量限制\n')
             return
 
