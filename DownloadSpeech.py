@@ -20,8 +20,11 @@ class DownloadSpeech:
     need_download_count = 0
 
     def __init__(self, text_id_list_str, speaker):
-        self.text_id_lit = text_id_list_str.split(',')
+        self.text_id_list = text_id_list_str.split(',')
         self.speaker = speaker
+        if len(self.text_id_list) > 13:
+            print(0)
+            return
         self.db = pymysql.connect(
             '127.0.0.1', 'tsaihau', 'hausung1998', 'ai_clock', charset='utf8mb4')
         self.cursor = self.db.cursor()
@@ -47,7 +50,7 @@ class DownloadSpeech:
     async def getSpeechs(self, session):
         tasks = []
 
-        for text_id in self.text_id_lit:
+        for text_id in self.text_id_list:
             content_list = self.getContentList(text_id)
 
             for i in range(0, len(content_list)):
