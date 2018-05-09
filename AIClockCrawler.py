@@ -7,15 +7,16 @@ import sys
 import json
 from xml.etree import ElementTree
 from datetime import datetime
+from GetChinesePlace import getChinesePlace
 
 
 class AIClockCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
-    # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
-    log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
-    sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
+    log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
+    # log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
+    # sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
-    bing_speech_api_key = '6cecb861c41b4b1681e5efb3780c3679'
+    bing_speech_api_key = 'a5ef00ba301349219a6c25263b59f82d'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
     download_count = 0
@@ -103,8 +104,13 @@ class AIClockCrawler:
                 return
 
             english_region = weather_data['query']['results']['channel']['location']['region']
+            english_city = weather_data['query']['results']['channel']['location']['city']
 
-            chinese_region = await self.getChineseRegion(session, english_region)
+            chinese_region, chinese_city = getChinesePlace(
+                english_region, english_city)
+
+            if chinese_city == '':
+                chinese_city = await self.getChineseCity(session, english_city)
 
             title = ''
             if datetime.now().hour >= 20:
@@ -117,23 +123,23 @@ class AIClockCrawler:
             code = int(forecast['code'])
 
             if code in [32, 33, 34]:
-                title += '%s%s天氣晴朗' % (day, chinese_region)
+                title += '%s%s天氣晴朗' % (day, chinese_city)
             elif code in [36]:
-                title += '%s%s天氣很熱' % (day, chinese_region)
+                title += '%s%s天氣很熱' % (day, chinese_city)
             elif code in [2, 23]:
-                title += '%s%s風很大，出門在外請小心' % (day, chinese_region)
+                title += '%s%s風很大，出門在外請小心' % (day, chinese_city)
             elif code in [3, 4, 9, 10, 11, 12, 37, 38, 39, 40, 45, 47]:
-                title += '%s%s會下雨，出門記得帶把傘' % (day, chinese_region)
+                title += '%s%s會下雨，出門記得帶把傘' % (day, chinese_city)
             elif code in [5, 6, 7, 41, 42, 43, 46]:
-                title += '%s%s會下雪，出門記得帶把傘' % (day, chinese_region)
+                title += '%s%s會下雪，出門記得帶把傘' % (day, chinese_city)
             elif code in [8, 35]:
-                title += '%s%s會下冰雹，出門記得帶把傘' % (day, chinese_region)
+                title += '%s%s會下冰雹，出門記得帶把傘' % (day, chinese_city)
             elif code in [25]:
-                title += '%s%s天氣很冷' % (day, chinese_region)
+                title += '%s%s天氣很冷' % (day, chinese_city)
             elif code in [26, 44]:
-                title += '%s%s是陰天' % (day, chinese_region)
+                title += '%s%s是陰天' % (day, chinese_city)
             elif code in [27, 28, 29, 30]:
-                title += '%s%s多雲' % (day, chinese_region)
+                title += '%s%s多雲' % (day, chinese_city)
 
             title += '，氣溫最低%d度，最高%d度' % (
                 int(forecast['low']), int(forecast['high']))
@@ -161,15 +167,13 @@ class AIClockCrawler:
                     return
                 await self.downloadSpeech(session, text_id, 0, title)
 
-    async def getChineseRegion(self, session, english_region):
-        async with session.get('https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=%f,%f&keyword=%s&rankby=distance&language=zh-TW&key=%s' % (self.latitude, self.longitude, english_region, self.google_place_api_key)) as response:
+    async def getChineseCity(self, session, english_city):
+        async with session.get('https://maps.googleapis.com/maps/api/place/textsearch/json?&query=%s&language=zh-TW&key=%s' % (english_city, self.google_place_api_key)) as response:
             place_data = await response.json()
             if len(place_data['results']) > 0:
-                place_data['results'][0]['name'] = place_data['results'][0]['name'].replace(
-                    '台', '臺')
                 return place_data['results'][0]['name']
             else:
-                self.logFile.write('getChineseRegion Failed\n')
+                self.logFile.write('getChineseCity Failed\n')
                 return ''
 
     async def getAirQualityStr(self, session, chinese_region):
