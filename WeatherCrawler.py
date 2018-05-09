@@ -35,7 +35,7 @@ class WeatherCrawler:
             english_region, english_city)
 
         if chinese_city == '':
-            chinese_city = self.getChineseCity(session, english_city)
+            chinese_city = self.getChineseCity(english_city)
 
         title = ''
         if datetime.now().hour >= 20:
@@ -87,7 +87,7 @@ class WeatherCrawler:
         text_id = self.insertWeatherText(title, 'weather')
         return text_id
 
-    def getChineseCity(self, english_region):
+    def getChineseCity(self, english_city):
         response = requests.get('https://maps.googleapis.com/maps/api/place/textsearch/json?&query=%s&language=zh-TW&key=%s' %
                                 (english_city, self.google_place_api_key))
         place_data = response.json()
