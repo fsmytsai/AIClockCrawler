@@ -86,7 +86,7 @@ class WeatherCrawler:
 
         text_id = self.insertWeatherText(title, 'weather')
         if text_id != 0:
-            if self.insertTimeOrWeatherSound(text_id, title) == False:
+            if self.insertWeatherSound(text_id, title) == False:
                 return 0
 
         return text_id
@@ -157,6 +157,11 @@ class WeatherCrawler:
             return text_id[0]
         else:
             return 0
+
+    def insertWeatherSound(self, text_id, content):
+        sql = 'insert into sounds values(%d, 0, \"%s\");' % (text_id, content)
+        is_success = self.runSQL(sql)
+        return is_success
 
     def runSQL(self, sql):
         try:
