@@ -293,7 +293,6 @@ class AIClockCrawler:
     def insertTimeOrWeatherSound(self, text_id, content):
         sql = 'insert into sounds values(%d, 0, \"%s\");' % (text_id, content)
         is_success = self.runSQL(sql)
-        return
         if is_success == False:
             self.logFile.write(
                 'insertTimeOrWeatherSound failed text_id = %d\n' % (text_id))
