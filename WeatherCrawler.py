@@ -85,6 +85,10 @@ class WeatherCrawler:
             return text_id
 
         text_id = self.insertWeatherText(title, 'weather')
+        if text_id != 0:
+            if self.insertTimeOrWeatherSound(text_id, title) == False:
+                return 0
+
         return text_id
 
     def getChineseCity(self, english_city):
@@ -133,6 +137,13 @@ class WeatherCrawler:
         if db_text is None:
             return 0
         else:
+            self.cursor.execute(
+                'select * from sounds where text_id = %d;' % (db_text[0]))
+            db_sound = self.cursor.fetchone()
+            if db_sound is None:
+                sql = 'delete from texts where text_id = %d;' % (db_text[0])
+                self.runSQL(sql)
+                return 0
             return db_text[0]
 
     def insertWeatherText(self, title, description):
