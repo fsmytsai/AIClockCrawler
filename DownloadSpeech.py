@@ -60,6 +60,7 @@ class DownloadSpeech:
                     tasks.append(self.downloadSpeech(
                         session, text_id, i, content_list[i]))
 
+        print(self.need_download_count)
         await asyncio.gather(*tasks)
 
     def getContentList(self, text_id):
