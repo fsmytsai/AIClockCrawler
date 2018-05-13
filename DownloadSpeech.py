@@ -56,7 +56,6 @@ class DownloadSpeech:
             for i in range(0, len(content_list)):
                 if os.path.exists('%s%s-%d-%d.wav' % (self.sound_absolute_path, text_id, i, self.speaker)) != True:
                     self.need_download_count += 1
-                    print(content_list[i])
                     tasks.append(self.downloadSpeech(
                         session, text_id, i, content_list[i]))
 
@@ -94,6 +93,7 @@ class DownloadSpeech:
 
         async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
             if response.status != 200:
+                print(response.status)
                 await asyncio.sleep(1.0)
                 await self.downloadSpeech(session, text_id, part_no, content)
             else:
