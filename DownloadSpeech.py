@@ -93,7 +93,6 @@ class DownloadSpeech:
 
         async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
             if response.status != 200:
-                print(response.status)
                 await asyncio.sleep(1.0)
                 await self.downloadSpeech(session, text_id, part_no, content)
             else:
