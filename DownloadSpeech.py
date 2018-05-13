@@ -54,6 +54,7 @@ class DownloadSpeech:
             content_list = self.getContentList(text_id)
 
             for i in range(0, len(content_list)):
+                print(i)
                 if os.path.exists('%s%s-%d-%d.wav' % (self.sound_absolute_path, text_id, i, self.speaker)) != True:
                     self.need_download_count += 1
                     tasks.append(self.downloadSpeech(
