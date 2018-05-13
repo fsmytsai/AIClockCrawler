@@ -55,12 +55,11 @@ class DownloadSpeech:
 
             for i in range(0, len(content_list)):
                 if os.path.exists('%s%s-%d-%d.wav' % (self.sound_absolute_path, text_id, i, self.speaker)) != True:
-                    print(i)
                     self.need_download_count += 1
+                    print(content_list[i])
                     tasks.append(self.downloadSpeech(
                         session, text_id, i, content_list[i]))
 
-        print(self.need_download_count)
         await asyncio.gather(*tasks)
 
     def getContentList(self, text_id):
