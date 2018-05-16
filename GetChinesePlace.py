@@ -176,15 +176,18 @@ def getChinesePlace(parent, child):
         }
     ]
 
+    region = ''
+    city = ''
     for data in arr:
         if data['parent'][0] in parent:
             for ch in data['child']:
                 if ch[0] in child:
-                    return data['parent'][1], ch[1]
+                    region = data['parent'][1]
+                    city = ch[1]
 
-    return '', ''
+    return region, city
 
 
-# a, b = getChinesePlace(' Nantou County','Lugu Township')
+# a, b = getChinesePlace(' Taipei City','Taipei City')
 # print(a)
 # print(b)
