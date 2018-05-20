@@ -101,20 +101,22 @@ class WeatherCrawler:
             return ''
 
     def getAirQualityStr(self, chinese_region):
-        response = requests.get(
-            'https://pm25.lass-net.org/data/last-all-epa.json')
-        air_quality_data = response.json()
-        max = 0
-        min = 500
-        for air_quality in air_quality_data['feeds']:
-            if chinese_region in air_quality['County']:
-                if 'AQI' in air_quality:
-                    if air_quality['AQI'] > max:
-                        max = air_quality['AQI']
-                    if air_quality['AQI'] < min:
-                        min = air_quality['AQI']
-
-        if max == 0 and min == 500:
+        try:
+            response = requests.get(
+                'https://pm25.lass-net.org/data/last-all-epa.json', timeout=3)
+            air_quality_data = response.json()
+            max = 0
+            min = 500
+            for air_quality in air_quality_data['feeds']:
+                if chinese_region in air_quality['County']:
+                    if 'AQI' in air_quality:
+                        if air_quality['AQI'] > max:
+                            max = air_quality['AQI']
+                        if air_quality['AQI'] < min:
+                            min = air_quality['AQI']
+            if max == 0 and min == 500:
+                return ''
+        except:
             return ''
 
         air_quality_str = '。空氣品質指數維%d到%d' % (min, max)
