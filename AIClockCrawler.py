@@ -178,7 +178,7 @@ class AIClockCrawler:
 
     async def getAirQualityStr(self, session, chinese_region):
         try:
-            async with session.get('https://pm25.lass-net.org/data/last-all-epa.json', timeout=3) as response:
+            async with session.get('https://pm25.lass-net.org/data/last-all-epa.json', timeout=1.5) as response:
                 air_quality_data = await response.json()
                 max = 0
                 min = 500

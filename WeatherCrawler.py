@@ -103,7 +103,7 @@ class WeatherCrawler:
     def getAirQualityStr(self, chinese_region):
         try:
             response = requests.get(
-                'https://pm25.lass-net.org/data/last-all-epa.json', timeout=3)
+                'https://pm25.lass-net.org/data/last-all-epa.json', timeout=1.5)
             air_quality_data = response.json()
             max = 0
             min = 500
