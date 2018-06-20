@@ -21,7 +21,8 @@ class DownloadMySound:
                  {'complete': '祝您有美好的一天，再見', 'alias': 'bye'},
                  {'complete': '嗨，我將為您播報天氣及新聞', 'alias': 'hello'},
                  {'complete': '此音檔已遺失', 'alias': 'lost'},
-                 {'complete': '本次播報的不是即時資料，原因可能是網路不穩', 'alias': 'olddata'}]
+                 {'complete': '本次播報的不是即時資料，原因可能是網路不穩', 'alias': 'olddata'},
+                 {'complete': '建議開啟預先取的資料及音檔的功能', 'alias': 'advance'}]
 
     all_speekers = [{'complete': 'Yating, Apollo', 'alias': 'f1'},
                     # {'complete': 'HanHanRUS', 'alias': 'f2'},
@@ -69,7 +70,7 @@ class DownloadMySound:
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, %s)' % (speaker['complete']))
         prosody = ElementTree.SubElement(voice, 'prosody')
-        prosody.set('volume', '+40.00%')
+        prosody.set('volume', '+20.00%')
         prosody.text = text['complete']
 
         uri = self.absolute_path + 'sounds/'

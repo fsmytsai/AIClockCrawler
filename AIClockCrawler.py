@@ -320,7 +320,7 @@ class AIClockCrawler:
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
         prosody = ElementTree.SubElement(voice, 'prosody')
-        prosody.set('volume', '+40.00%')
+        prosody.set('volume', '+20.00%')
         prosody.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
