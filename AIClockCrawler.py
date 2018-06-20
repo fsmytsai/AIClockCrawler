@@ -16,7 +16,7 @@ class AIClockCrawler:
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
     google_place_api_key = 'AIzaSyBxDEN5xNm3zsgMKnWxflTYVTpMLDM9dIo'
-    bing_speech_api_key = 'a5ef00ba301349219a6c25263b59f82d'
+    speech_api_key = '6c8b9cd052114481a2e893ede9ace4d1'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     results = []
     download_count = 0
@@ -44,7 +44,7 @@ class AIClockCrawler:
         self.cursor = self.db.cursor()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.getBingSpeechAPIToken())
+        loop.run_until_complete(self.getSpeechAPIToken())
         loop.close()
 
         tEnd = time.time()
@@ -54,11 +54,11 @@ class AIClockCrawler:
         print(json.dumps(self.results))
         self.logFile.close()
 
-    async def getBingSpeechAPIToken(self):
+    async def getSpeechAPIToken(self):
         async with aiohttp.ClientSession() as session:
             headers = {
-                'Ocp-Apim-Subscription-Key': self.bing_speech_api_key}
-            async with session.post('https://api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
+                'Ocp-Apim-Subscription-Key': self.speech_api_key}
+            async with session.post('https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
                 if response.status != 200:
                     self.logFile.write('取得 token 失敗\n')
                     return
@@ -315,25 +315,25 @@ class AIClockCrawler:
                    'Authorization': 'Bearer ' + self.access_token}
 
         body = ElementTree.Element('speak', version='1.0')
-        body.set('xml:lang', 'en-us')
+        body.set('xml:lang', 'zh-TW')
         voice = ElementTree.SubElement(body, 'voice')
-        voice.set('xml:lang', 'en-us')
-        voice.set('xml:gender', 'Female')
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
-        voice.text = content
+        prosody = ElementTree.SubElement(voice, 'prosody')
+        prosody.set('volume', '+40.00%')
+        prosody.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
 
-        async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
-            sound = await response.read()
-            with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
-                if response.status != 200:
-                    self.logFile.write('error text_id = %d part_no = %d speaker = %d status = %d\n' %
-                                       (text_id, part_no, self.speaker, response.status))
-                    await asyncio.sleep(1.0)
-                    await self.downloadSpeech(session, text_id, part_no, content)
-                else:
+        async with session.post('https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1', data=ElementTree.tostring(body), headers=headers) as response:
+            if response.status != 200:
+                self.logFile.write('error text_id = %d part_no = %d speaker = %d status = %d\n' %
+                                   (text_id, part_no, self.speaker, response.status))
+                await asyncio.sleep(1.0)
+                await self.downloadSpeech(session, text_id, part_no, content)
+            else:
+                sound = await response.read()
+                with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
                     f.write(sound)
                     self.logFile.write('下載完成 %d-%d-%d\n' %
                                        (text_id, part_no, self.speaker))

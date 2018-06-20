@@ -13,7 +13,7 @@ from GetChinesePlace import getChinesePlace
 class DownloadSpeech:
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
-    bing_speech_api_key = 'a5ef00ba301349219a6c25263b59f82d'
+    speech_api_key = '6c8b9cd052114481a2e893ede9ace4d1'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     download_count = 0
     downloaded_count = 0
@@ -30,18 +30,18 @@ class DownloadSpeech:
         self.cursor = self.db.cursor()
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.getBingSpeechAPIToken())
+        loop.run_until_complete(self.getSpeechAPIToken())
         loop.close()
         if self.downloaded_count == self.need_download_count:
             print(1)
         else:
             print(0)
 
-    async def getBingSpeechAPIToken(self):
+    async def getSpeechAPIToken(self):
         async with aiohttp.ClientSession() as session:
             headers = {
-                'Ocp-Apim-Subscription-Key': self.bing_speech_api_key}
-            async with session.post('https://api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
+                'Ocp-Apim-Subscription-Key': self.speech_api_key}
+            async with session.post('https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
                 if response.status != 200:
                     return
                 self.access_token = await response.text()
@@ -81,17 +81,17 @@ class DownloadSpeech:
                    'Authorization': 'Bearer ' + self.access_token}
 
         body = ElementTree.Element('speak', version='1.0')
-        body.set('xml:lang', 'en-us')
+        body.set('xml:lang', 'zh-TW')
         voice = ElementTree.SubElement(body, 'voice')
-        voice.set('xml:lang', 'en-us')
-        voice.set('xml:gender', 'Female')
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
-        voice.text = content
+        prosody = ElementTree.SubElement(voice, 'prosody')
+        prosody.set('volume', '+40.00%')
+        prosody.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
 
-        async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
+        async with session.post('https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1', data=ElementTree.tostring(body), headers=headers) as response:
             if response.status != 200:
                 await asyncio.sleep(1.0)
                 await self.downloadSpeech(session, text_id, part_no, content)

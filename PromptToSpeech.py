@@ -13,7 +13,7 @@ class PromptToSpeech:
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
     log_absolute_path = '/var/crawler/AIClockCrawler/pts_logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
-    bing_speech_api_key = 'a5ef00ba301349219a6c25263b59f82d'
+    speech_api_key = '6c8b9cd052114481a2e893ede9ace4d1'
     real_speaker = ['Yating, Apollo', 'HanHanRUS', 'Zhiwei, Apollo']
     result = {'is_success': False, 'data': {}}
     download_count = 0
@@ -37,7 +37,7 @@ class PromptToSpeech:
         self.db = pymysql.connect(
             '127.0.0.1', 'tsaihau', 'hausung1998', 'ai_clock', charset='utf8mb4')
         self.cursor = self.db.cursor()
-        self.getBingSpeechAPIToken()
+        self.getSpeechAPIToken()
 
         tEnd = time.time()
         self.logFile.write('Download Count = %d\n' % (self.download_count))
@@ -46,10 +46,10 @@ class PromptToSpeech:
         print(json.dumps(self.result))
         self.logFile.close()
 
-    def getBingSpeechAPIToken(self):
-        headers = {'Ocp-Apim-Subscription-Key': self.bing_speech_api_key}
+    def getSpeechAPIToken(self):
+        headers = {'Ocp-Apim-Subscription-Key': self.speech_api_key}
         response = requests.post(
-            'https://api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers)
+            'https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers)
         if response.status_code != 200:
             self.logFile.write('取得 token 失敗\n')
             return
@@ -146,32 +146,33 @@ class PromptToSpeech:
                    'Authorization': 'Bearer ' + self.access_token}
 
         body = ElementTree.Element('speak', version='1.0')
-        body.set('xml:lang', 'en-us')
+        body.set('xml:lang', 'zh-TW')
         voice = ElementTree.SubElement(body, 'voice')
-        voice.set('xml:lang', 'en-us')
-        voice.set('xml:gender', 'Female')
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, ' + self.real_speaker[self.speaker] + ')')
-        voice.text = content
+        prosody = ElementTree.SubElement(voice, 'prosody')
+        prosody.set('volume', '+40.00%')
+        prosody.text = content
 
         os.makedirs(self.sound_absolute_path, exist_ok=True)
 
-        response = requests.post('https://speech.platform.bing.com/synthesize',
+        response = requests.post('https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1',
                                  data=ElementTree.tostring(body), headers=headers)
-        sound = response.content
-        with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
-            if response.status_code != 200:
+        if response.status_code != 200:
                 self.logFile.write('error text_id = %d part_no = %d speaker = %d status = %d\n' %
                                    (text_id, part_no, self.speaker, response.status))
                 time.sleep(1)
                 self.downloadSpeech(text_id, part_no, content)
-            else:
-                f.write(sound)
-                self.logFile.write('下載完成 %d-%d-%d\n' %
-                                   (text_id, part_no, self.speaker))
+        else:
+            sound = response.content
+            with open('%s%d-%d-%d.wav' % (self.sound_absolute_path, text_id, part_no, self.speaker), 'wb') as f:
+                
+                    f.write(sound)
+                    self.logFile.write('下載完成 %d-%d-%d\n' %
+                                    (text_id, part_no, self.speaker))
 
-                self.result['data'] = {'text_id': text_id, 'part_count': 1}
-                self.result['is_success'] = True
+                    self.result['data'] = {'text_id': text_id, 'part_count': 1}
+                    self.result['is_success'] = True
 
     def runSQL(self, sql):
         try:

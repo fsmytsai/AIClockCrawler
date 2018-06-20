@@ -24,27 +24,30 @@ class DownloadMySound:
                  {'complete': '本次播報的不是即時資料，原因可能是網路不穩', 'alias': 'olddata'}]
 
     all_speekers = [{'complete': 'Yating, Apollo', 'alias': 'f1'},
-                    {'complete': 'HanHanRUS', 'alias': 'f2'},
+                    # {'complete': 'HanHanRUS', 'alias': 'f2'},
                     {'complete': 'Zhiwei, Apollo', 'alias': 'm1'}]
     absolute_path = './'
-    api_key = 'c251429f2b504b0b853a8c43644e169d'
+    api_key = '6c8b9cd052114481a2e893ede9ace4d1'
 
     def __init__(self):
         tStart = time.time()
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_until_complete(self.crawl())
+        loop.run_until_complete(self.getSpeechAPIToken())
         loop.close()
 
         tEnd = time.time()
         print('It cost %f sec' % (tEnd - tStart))
 
-    async def crawl(self):
+    async def getSpeechAPIToken(self):
         async with aiohttp.ClientSession() as session:
             headers = {
                 'Ocp-Apim-Subscription-Key': self.api_key}
-            async with session.post('https://api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
+            async with session.post('https://eastasia.api.cognitive.microsoft.com/sts/v1.0/issueToken', headers=headers) as response:
+                if response.status != 200:
+                    print('Authentication Failed')
+                    return
                 self.access_token = await response.text()
                 tasks = []
                 for speaker in self.all_speekers:
@@ -61,28 +64,28 @@ class DownloadMySound:
                    "Authorization": "Bearer " + self.access_token}
 
         body = ElementTree.Element('speak', version='1.0')
-        body.set('xml:lang', 'en-us')
+        body.set('xml:lang', 'zh-TW')
         voice = ElementTree.SubElement(body, 'voice')
-        voice.set('xml:lang', 'en-us')
-        voice.set('xml:gender', 'Female')
         voice.set(
             'name', 'Microsoft Server Speech Text to Speech Voice (zh-TW, %s)' % (speaker['complete']))
-        voice.text = text['complete']
+        prosody = ElementTree.SubElement(voice, 'prosody')
+        prosody.set('volume', '+40.00%')
+        prosody.text = text['complete']
 
         uri = self.absolute_path + 'sounds/'
 
         # 建立資料夾
         os.makedirs(uri, exist_ok=True)
 
-        async with session.post('https://speech.platform.bing.com/synthesize', data=ElementTree.tostring(body), headers=headers) as response:
-            sound = await response.read()
-            with open('%s%s_%s.wav' % (uri, speaker['alias'], text['alias']), 'wb') as f:
-                if response.status != 200:
-                    print('error %d %s_%s' %
-                          (response.status, speaker['alias'], text['alias']))
-                    await asyncio.sleep(1.0)
-                    await self.downloadSpeech(session, speaker, text)
-                else:
+        async with session.post('https://eastasia.tts.speech.microsoft.com/cognitiveservices/v1', data=ElementTree.tostring(body), headers=headers) as response:
+            if response.status != 200:
+                print('error %d %s_%s' %
+                      (response.status, speaker['alias'], text['alias']))
+                await asyncio.sleep(1.0)
+                await self.downloadSpeech(session, speaker, text)
+            else:
+                sound = await response.read()
+                with open('%s%s_%s.wav' % (uri, speaker['alias'], text['alias']), 'wb') as f:
                     f.write(sound)
                     print('新音檔 %d %s_%s' %
                           (len(sound), speaker['alias'], text['alias']))
