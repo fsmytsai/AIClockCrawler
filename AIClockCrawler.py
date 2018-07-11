@@ -11,7 +11,7 @@ from GetChinesePlace import getChinesePlace
 
 
 class AIClockCrawler:
-    # log_absolute_path = '/Users/tsaiminyuan/NoCloudDoc/Crawler/AIClockCrawler/logs/'
+    # log_absolute_path = 'logs/'
     # sound_absolute_path = '/Users/tsaiminyuan/Documents/LaravelProject/LaravelAIClock/public/sounds/'
     log_absolute_path = '/var/crawler/AIClockCrawler/logs/'
     sound_absolute_path = '/var/www/LaravelAIClock/public/sounds/'
@@ -21,11 +21,11 @@ class AIClockCrawler:
     results = []
     download_count = 0
 
-    def __init__(self, hour, minute, speaker, category, news_count, latitude, longitude):
+    def __init__(self, hour, minute, speaker, category_list, news_count, latitude, longitude):
         self.hour = hour
         self.minute = minute
         self.speaker = speaker
-        self.category = category
+        self.category_list = category_list
         self.news_count = news_count
         self.latitude = latitude
         self.longitude = longitude
@@ -66,7 +66,7 @@ class AIClockCrawler:
                 await self.getTimeSpeech(session)
                 if self.latitude != 1000:
                     await self.getYahooWeather(session)
-                if self.category != '-1':
+                if self.category_list[0] != '-1':
                     await self.getNews(session)
 
     async def getTimeSpeech(self, session):
@@ -229,13 +229,20 @@ class AIClockCrawler:
         await asyncio.gather(*tasks)
 
     def getNewsList(self):
-        self.cursor.execute(
-            'select * from texts where category = \"%s\" order by text_id desc limit %d;' % (self.category, self.news_count))
-        db_texts = self.cursor.fetchall()
+        normal_count = self.news_count / len(self.category_list)
+        most_count = normal_count + self.news_count % len(self.category_list)
         news_list = []
-        for db_text in db_texts:
-            news_list.append({'text_id': db_text[0],
-                              'part_count': db_text[4]})
+        for index, category in enumerate(self.category_list):
+            if index == len(self.category_list) - 1:
+                self.cursor.execute(
+                    'select * from texts where category = \"%s\" order by text_id desc limit %d;' % (category, most_count))
+            else:
+                self.cursor.execute(
+                    'select * from texts where category = \"%s\" order by text_id desc limit %d;' % (category, normal_count))
+            db_texts = self.cursor.fetchall()
+            for db_text in db_texts:
+                news_list.append({'text_id': db_text[0],
+                                  'part_count': db_text[4]})
 
         return news_list
 
@@ -363,7 +370,7 @@ if len(sys.argv) > 7:
         hour = int(sys.argv[1])
         minute = int(sys.argv[2])
         speaker = int(sys.argv[3])
-        ctg = int(sys.argv[4])
+        ctg_list_str = sys.argv[4]
         news_count = int(sys.argv[5])
         latitude = float(sys.argv[6])
         longitude = float(sys.argv[7])
@@ -372,10 +379,14 @@ if len(sys.argv) > 7:
 
     category = ['general', 'business', 'entertainment',
                 'health', 'science', 'sports', '-1']
+    category_list = []
+    ctg_list = ctg_list_str.split(',')
+    for ctg in ctg_list:
+        category_list.append(category[int(ctg)])
 
-    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and -1 <= ctg < 6 and 6 <= news_count <= 10:
+    if 0 <= hour < 24 and 0 <= minute < 60 and 0 <= speaker < 3 and 6 <= news_count <= 10:
         AIClockCrawler(
-            hour, minute, speaker, category[ctg], news_count, latitude, longitude)
+            hour, minute, speaker, category_list, news_count, latitude, longitude)
     else:
         print('輸入錯誤')
 else:
