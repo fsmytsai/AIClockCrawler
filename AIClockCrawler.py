@@ -85,6 +85,8 @@ class AIClockCrawler:
         elif self.hour in range(18, 24):
             title += '，晚上好'
 
+        title += '，AI智能鬧鐘將於一月十八日停止服務，感謝各位用戶這幾個月來的支持！'
+
         text_id = await self.checkTimeOrWeatherText(session, title)
         if text_id != 0:
             return
